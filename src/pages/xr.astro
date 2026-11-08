@@ -1,0 +1,101 @@
+---
+import Base from '../layouts/Base.astro';
+import Section from '../components/Section.astro';
+import Download from '../components/Download.astro';
+import { xrVersion } from '../data/site';
+
+const features = [
+  {
+    name: 'Panels, not windows',
+    text: 'Every surface is a Compose panel on an arc in front of the listener: now playing, library, pattern, details, queue, settings and the debug view.',
+  },
+  {
+    name: 'One object per channel',
+    text: 'Spatial mode gives each tracker channel its own mono AudioTrack and its own position. Thirty-two fixed buses feed the platform spatializer; a four-channel ambisonic bus carries the room reverb.',
+  },
+  {
+    name: 'Hands and controllers',
+    text: 'Interaction SDK through one pointer model: ray, direct touch and grabbing with either modality. Free layout is a toolkit Grabbable bridge; stationary puts the arc back.',
+  },
+  {
+    name: 'Room-sized',
+    text: 'MRUK supplies the room bounds, which set the ring radius and a Sabine estimate for the reverb tail. A repeated space setup updates both instead of keeping the first room forever.',
+  },
+  {
+    name: 'Passthrough',
+    text: 'A coloured dome, or the real room. The two cannot show at once, so the dome is hidden rather than blended, and the choice survives the session teardown MRUK causes.',
+  },
+  {
+    name: 'Readable diagnostics',
+    text: 'A debug panel lists each bus, its azimuth and the engine’s own gain values, with marker spheres in the scene. The 3D view is there to disagree with the numbers on purpose.',
+  },
+];
+
+const specs = [
+  ['Device', 'Meta Quest 3 / Quest 3S'],
+  ['OS', 'Horizon OS v207 or newer'],
+  ['SDK', 'Meta Spatial SDK 0.15.0'],
+  ['Input', 'Interaction SDK — controllers and hands'],
+  ['Audio', '32 mono spatial buses + one 4-channel ambisonic reverb bus'],
+  ['ABI', 'arm64-v8a'],
+  ['License', 'BSD-3-Clause'],
+];
+---
+
+<Base title="XR — modplayjs">
+  <header class="border-b border-base-300 pb-8">
+    <p class="font-mono text-[0.64rem] uppercase tracking-[0.2em] text-base-content/35">
+      Surface / 02
+    </p>
+    <h1 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">modplay XR</h1>
+    <p class="mt-4 max-w-[62ch] text-[0.98rem] leading-relaxed text-base-content/65">
+      The same engine in a room instead of a phone. Panels stand around the listener, and a spatial
+      mode gives every tracker channel a position the platform can render.
+    </p>
+  </header>
+
+  <Section index="01" title="Download" note={`version ${xrVersion}`}>
+    <Download
+      target="Quest · sideload APK"
+      meta={`Version ${xrVersion} · Quest 3 / 3S · Horizon OS v207+`}
+      note="No build has been published yet. Sideloading instructions arrive with the first signed build; there is no store listing before that."
+    />
+  </Section>
+
+  <Section index="02" title="What it does" note="spatial audio over tracker buses">
+    <ol class="border-t border-base-300">
+      {
+        features.map((feature, index) => (
+          <li class="grid gap-2 border-b border-base-300 py-4 sm:grid-cols-[3rem_minmax(0,12rem)_minmax(0,1fr)] sm:gap-5">
+            <span class="font-mono text-[0.66rem] text-base-content/30">
+              {String(index + 1).padStart(2, '0')}
+            </span>
+            <h3 class="text-[0.9rem] font-semibold text-base-content">{feature.name}</h3>
+            <p class="max-w-[66ch] text-[0.86rem] leading-relaxed text-base-content/55">
+              {feature.text}
+            </p>
+          </li>
+        ))
+      }
+    </ol>
+  </Section>
+
+  <Section index="03" title="Specification" note="from the build">
+    <dl class="border-t border-base-300">
+      {
+        specs.map(([key, value]) => (
+          <div class="grid gap-1 border-b border-base-300 py-2.5 sm:grid-cols-[12rem_minmax(0,1fr)] sm:gap-5">
+            <dt class="font-mono text-[0.66rem] uppercase tracking-[0.12em] text-base-content/35">
+              {key}
+            </dt>
+            <dd class="text-[0.86rem] text-base-content/70">{value}</dd>
+          </div>
+        ))
+      }
+    </dl>
+    <p class="mt-4 max-w-[70ch] font-mono text-[0.68rem] leading-relaxed text-base-content/35">
+      Hand tracking is optional. It is enabled through a manifest permission, not a system switch the
+      app can flip; without it the controllers reach every interaction, including panel grabbing.
+    </p>
+  </Section>
+</Base>

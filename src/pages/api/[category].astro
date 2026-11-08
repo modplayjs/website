@@ -1,0 +1,144 @@
+---
+import Base from '../../layouts/Base.astro';
+import Section from '../../components/Section.astro';
+import { categories, formatRows } from '../../data/site';
+
+export function getStaticPaths() {
+  return categories.map((category) => ({
+    params: { category: category.slug },
+    props: { category },
+  }));
+}
+
+const { category } = Astro.props;
+const position = categories.indexOf(category);
+const next = categories[(position + 1) % categories.length];
+
+const loaderNames = new Set(category.packages.map((pkg) => pkg.name.replace('@modplayjs/', '')));
+const formats = category.slug === 'formats' ? formatRows.filter((row) => loaderNames.has(row.loader)) : [];
+---
+
+<Base title={`${category.title} — modplayjs API`} description={category.blurb}>
+  <div class="breadcrumbs py-0 font-mono text-[0.64rem] text-base-content/30">
+    <ul>
+      <li><a href="/api" class="hover:text-primary">Library API</a></li>
+      <li class="text-base-content/50">{category.title}</li>
+    </ul>
+  </div>
+
+  <header class="mt-3 border-b border-base-300 pb-8">
+    <p class="font-mono text-[0.64rem] uppercase tracking-[0.2em] text-base-content/35">
+      Library API / {category.order}
+    </p>
+    <h1 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{category.title}</h1>
+    <p class="mt-4 max-w-[66ch] text-[0.96rem] leading-relaxed text-base-content/65">
+      {category.blurb}
+    </p>
+  </header>
+
+  {
+    category.snippet && (
+      <div class="mt-8">
+        <div class="border border-base-300">
+          <div class="flex items-center justify-between gap-3 border-b border-base-300 px-4 py-2">
+            <span class="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-base-content/40">
+              {category.snippet.title}
+            </span>
+            <span class="font-mono text-[0.58rem] uppercase tracking-[0.14em] text-base-content/25">
+              TypeScript
+            </span>
+          </div>
+          <pre class="overflow-x-auto bg-base-200/60 p-4 font-mono text-[0.72rem] leading-relaxed text-base-content/70"><code>{category.snippet.code}</code></pre>
+        </div>
+        {category.snippet.note && (
+          <p class="mt-2 max-w-[72ch] font-mono text-[0.66rem] leading-relaxed text-base-content/35">
+            {category.snippet.note}
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  <Section index="01" title="Packages" note={`${category.packages.length} pkg`}>
+    <div class="overflow-x-auto">
+      <table class="table table-sm">
+        <thead>
+          <tr class="border-base-300">
+            <th class="w-64 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
+              Package
+            </th>
+            <th class="w-20 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
+              Version
+            </th>
+            <th class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
+              Role
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            category.packages.map((pkg) => (
+              <tr class="border-base-300/60 align-top hover:bg-base-200/60">
+                <td class="py-3">
+                  <span class="font-mono text-[0.76rem] text-base-content/90">{pkg.name}</span>
+                  {pkg.tag && (
+                    <span class="mt-1 block font-mono text-[0.58rem] uppercase tracking-[0.14em] text-warning/70">
+                      {pkg.tag}
+                    </span>
+                  )}
+                </td>
+                <td class="py-3 font-mono text-[0.7rem] text-base-content/40">{pkg.version}</td>
+                <td class="py-3 text-[0.84rem] leading-relaxed text-base-content/55">{pkg.role}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  </Section>
+
+  {
+    category.slug === 'formats' && (
+      <Section index="02" title="Extensions" note={`${formats.length} rows`}>
+        <div class="overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr class="border-base-300">
+                <th class="w-56 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
+                  Format
+                </th>
+                <th class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
+                  Extensions
+                </th>
+                <th class="w-36 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
+                  Loader
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {formats.map((row) => (
+                <tr class="border-base-300/60 hover:bg-base-200/60">
+                  <td class="py-2.5 text-[0.84rem] text-base-content/85">{row.format}</td>
+                  <td class="py-2.5 font-mono text-[0.72rem] text-base-content/55">{row.extensions}</td>
+                  <td class="py-2.5 font-mono text-[0.7rem] text-base-content/40">{row.loader}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+    )
+  }
+
+  <nav class="mt-16 flex items-center justify-between gap-4 border-t border-base-300 pt-5">
+    <a href="/api" class="font-mono text-[0.66rem] uppercase tracking-[0.14em] text-base-content/35 hover:text-primary">
+      ← All categories
+    </a>
+    <a
+      href={`/api/${next.slug}`}
+      class="text-right font-mono text-[0.66rem] uppercase tracking-[0.14em] text-base-content/50 hover:text-primary"
+    >
+      {next.order} · {next.title} →
+    </a>
+  </nav>
+</Base>

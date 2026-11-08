@@ -1,0 +1,36 @@
+---
+interface Props {
+  target: string;
+  meta: string;
+  note: string;
+}
+
+const { target, meta, note } = Astro.props;
+---
+
+<div>
+  <div
+    class="flex flex-col gap-4 border border-base-300 bg-base-200/50 p-5 sm:flex-row sm:items-center sm:justify-between"
+  >
+    <div class="min-w-0">
+      <p class="font-mono text-[0.64rem] uppercase tracking-[0.18em] text-base-content/35">{target}</p>
+      <p class="mt-1 font-mono text-[0.8rem] text-base-content/70">{meta}</p>
+    </div>
+    <div class="flex shrink-0 items-center gap-3">
+      <button
+        type="button"
+        disabled
+        aria-disabled="true"
+        data-coming-soon
+        class="btn btn-outline btn-disabled border-base-300 font-mono text-[0.7rem] uppercase tracking-[0.14em]"
+      >
+        Download
+      </button>
+      <span
+        class="badge badge-outline badge-sm border-base-300 font-mono text-[0.6rem] uppercase tracking-[0.12em] text-base-content/40"
+        >coming soon</span
+      >
+    </div>
+  </div>
+  <p class="mt-2 max-w-[70ch] font-mono text-[0.66rem] leading-relaxed text-base-content/35">{note}</p>
+</div>

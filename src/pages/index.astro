@@ -1,0 +1,202 @@
+---
+import Base from '../layouts/Base.astro';
+import Section from '../components/Section.astro';
+import { androidVersion, categories, figures, formatRows, libraryVersion, xrVersion } from '../data/site';
+
+const stages = [
+  { no: '01', name: 'File', text: 'A module, a SID tune or an ordinary audio file, from disk or a URL.' },
+  { no: '02', name: 'Loader', text: 'One format plugin parses it into the core’s data model, quirks included.' },
+  { no: '03', name: 'Core', text: 'libxmp’s frame loop: order, row, tick, effects, virtual channels.' },
+  { no: '04', name: 'Mixer', text: 'A DSP plugin renders each tick to interleaved stereo float.' },
+  { no: '05', name: 'Output', text: 'A sink pulls: AudioWorklet, a PCM writer, the Android session.' },
+];
+
+const surfaces = [
+  {
+    href: '/android',
+    name: 'Android',
+    meta: `${androidVersion} · Android 15+ · arm64-v8a`,
+    text: 'Folders through the Storage Access Framework, a Room index, favourites and recents, background playback, a live pattern view.',
+  },
+  {
+    href: '/xr',
+    name: 'modplay XR',
+    meta: `${xrVersion} · Quest 3 / 3S · Horizon OS v207+`,
+    text: 'Meta Spatial SDK panels, Interaction SDK hands and controllers, one audio object per channel, room-sized spatial ring.',
+  },
+];
+---
+
+<Base title="modplayjs — tracker & chiptune engine">
+  <header class="border-b border-base-300 pb-10">
+    <p class="font-mono text-[0.66rem] uppercase leading-relaxed tracking-[0.2em] text-base-content/40">
+      <span class="mr-3 inline-block size-1.5 bg-primary align-middle"></span>Tracker &amp; chiptune
+      engine · TypeScript · BSD-3-Clause
+    </p>
+    <h1 class="mt-5 font-display text-[clamp(2.1rem,6vw,3.7rem)] leading-[1.02]">
+      modplay<span class="text-primary">js</span>
+    </h1>
+    <p class="mt-6 max-w-[62ch] text-[1.05rem] leading-relaxed text-base-content/70">
+      A player library for tracker modules and chiptunes. The loaders and the mixer are ports of
+      libxmp, OpenMPT and cRSID, and the numbers below are diffs against those C references — not
+      claims about them.
+    </p>
+
+    <dl class="mt-8 grid grid-cols-2 gap-px border border-base-300 bg-base-300 sm:grid-cols-4">
+      {
+        [
+          ['27', 'packages'],
+          ['17', 'format loaders'],
+          ['5,534', 'files in the corpus'],
+          ['0', 'load failures'],
+        ].map(([value, label]) => (
+          <div class="bg-base-100 px-4 py-3">
+            <dt class="font-mono text-[0.6rem] uppercase tracking-[0.16em] text-base-content/35">
+              {label}
+            </dt>
+            <dd class="mt-1 font-mono text-lg text-base-content">{value}</dd>
+          </div>
+        ))
+      }
+    </dl>
+  </header>
+
+  <Section index="01" title="Signal path" note="pull, not push">
+    <div class="grid gap-px border border-base-300 bg-base-300 sm:grid-cols-2 lg:grid-cols-5">
+      {
+        stages.map((stage) => (
+          <div class="bg-base-100 p-4">
+            <div class="flex items-baseline justify-between gap-2">
+              <span class="font-mono text-[0.6rem] text-base-content/30">{stage.no}</span>
+              <span class="h-px flex-1 bg-base-300" />
+            </div>
+            <h3 class="mt-3 font-mono text-[0.72rem] uppercase tracking-[0.16em] text-base-content">
+              {stage.name}
+            </h3>
+            <p class="mt-2 text-[0.8rem] leading-relaxed text-base-content/55">{stage.text}</p>
+          </div>
+        ))
+      }
+    </div>
+    <p class="mt-4 max-w-[72ch] font-mono text-[0.68rem] leading-relaxed text-base-content/35">
+      The core never pushes samples. An output asks <code class="text-base-content/60">playBuffer()</code>
+      for exactly what it can take, so the same mixer feeds an AudioWorklet, an offline WAV writer and
+      the native Android sink without a playback thread of its own.
+    </p>
+  </Section>
+
+  <Section index="02" title="Formats" note={`${formatRows.length} rows`}>
+    <div class="overflow-x-auto">
+      <table class="table table-sm">
+        <thead>
+          <tr class="border-base-300">
+            <th class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
+              Format
+            </th>
+            <th class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
+              Extensions
+            </th>
+            <th class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
+              Loader
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            formatRows.map((row) => (
+              <tr class="border-base-300/60 hover:bg-base-200/60">
+                <td class="py-2.5 align-top">
+                  <span class="mr-2 font-mono text-[0.56rem] uppercase tracking-[0.14em] text-base-content/25">
+                    {row.family}
+                  </span>
+                  <span class="text-[0.84rem] text-base-content/90">{row.format}</span>
+                  <span class="mt-0.5 block max-w-[52ch] text-[0.72rem] leading-snug text-base-content/40">
+                    {row.note}
+                  </span>
+                </td>
+                <td class="py-2.5 align-top font-mono text-[0.72rem] text-base-content/55">
+                  {row.extensions}
+                </td>
+                <td class="py-2.5 align-top font-mono text-[0.7rem] text-base-content/40">
+                  {row.loader}
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  </Section>
+
+  <Section index="03" title="Verified against C" note="reference oracles, not expectations">
+    <div class="grid gap-px border border-base-300 bg-base-300 sm:grid-cols-2 lg:grid-cols-4">
+      {
+        figures.map((figure) => (
+          <div class="bg-base-100 p-4">
+            <p class="font-mono text-[1.35rem] leading-none text-base-content">{figure.value}</p>
+            <p class="mt-2 max-w-[24ch] font-mono text-[0.64rem] leading-relaxed text-base-content/40">
+              {figure.label}
+            </p>
+          </div>
+        ))
+      }
+    </div>
+    <div class="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <p class="max-w-[64ch] text-[0.9rem] leading-relaxed text-base-content/60">
+        Loader output is compared byte for byte against libxmp’s <span class="font-mono text-[0.82rem]">ModuleData</span>.
+        Mixer state is replayed frame by frame against libxmp’s own voice dumps.
+        <span class="font-mono text-[0.82rem]">fmt-sid</span> is sample-exact against a cRSID oracle build.
+      </p>
+      <p class="max-w-[64ch] text-[0.9rem] leading-relaxed text-base-content/60">
+        The corpus is deliberately larger than the supported set: 546 files of 13 formats have no
+        parser here, so the claim is “zero failures in everything a reference parser also reads”, not
+        “everything loads”.
+      </p>
+    </div>
+  </Section>
+
+  <Section index="04" title="Surfaces" note="engine shared, shells separate">
+    <div class="border-t border-base-300">
+      {
+        surfaces.map((surface) => (
+          <a
+            href={surface.href}
+            class="group grid gap-2 border-b border-base-300 py-5 transition-colors hover:bg-base-200/50 sm:grid-cols-[11rem_minmax(0,1fr)_auto] sm:items-baseline sm:gap-6"
+          >
+            <h3 class="text-[0.95rem] font-semibold text-base-content group-hover:text-primary">
+              {surface.name}
+            </h3>
+            <p class="max-w-[62ch] text-[0.86rem] leading-relaxed text-base-content/55">
+              {surface.text}
+            </p>
+            <p class="font-mono text-[0.64rem] text-base-content/35">{surface.meta}</p>
+          </a>
+        ))
+      }
+    </div>
+  </Section>
+
+  <Section index="05" title="Library API" note={`${categories.reduce((n, c) => n + c.packages.length, 0)} packages`}>
+    <div class="border-t border-base-300">
+      {
+        categories.map((category) => (
+          <a
+            href={`/api/${category.slug}`}
+            class="group grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 border-b border-base-300 py-4 transition-colors hover:bg-base-200/50 sm:grid-cols-[2.5rem_11rem_minmax(0,1fr)_auto] sm:items-baseline sm:gap-x-5"
+          >
+            <span class="font-mono text-[0.66rem] text-base-content/30">{category.order}</span>
+            <span class="text-[0.9rem] text-base-content group-hover:text-primary">
+              {category.title}
+            </span>
+            <span class="col-span-2 mt-1 max-w-[62ch] text-[0.8rem] leading-relaxed text-base-content/45 sm:col-span-1 sm:mt-0">
+              {category.blurb}
+            </span>
+            <span class="col-span-2 mt-1 font-mono text-[0.62rem] text-base-content/30 sm:col-span-1 sm:mt-0">
+              {category.packages.length} pkg
+            </span>
+          </a>
+        ))
+      }
+    </div>
+  </Section>
+</Base>
