@@ -1,0 +1,69 @@
+---
+import { categories } from '../data/site';
+
+interface Props {
+  path: string;
+}
+
+const { path } = Astro.props;
+const normalized = path.replace(/\/+$/, '') || '/';
+const onOverview = normalized === '/api';
+
+/** Row anchor on the category page, e.g. @modplayjs/fmt-mod -> pkg-fmt-mod. */
+const anchorFor = (name: string) => `pkg-${name.split('/').pop()}`;
+---
+
+<nav aria-label="Library API" class="font-mono">
+  <p class="px-2 text-[0.6rem] uppercase tracking-[0.18em] text-base-content/30">Library API</p>
+
+  <a
+    href="/api"
+    aria-current={onOverview ? 'page' : undefined}
+    class:list={[
+      'mt-2 flex items-baseline gap-2 px-2 py-1.5 text-[0.74rem]',
+      onOverview ? 'bg-base-200 text-primary' : 'text-base-content/60 hover:text-base-content',
+    ]}
+  >
+    Overview
+  </a>
+
+  <div class="mt-5 space-y-0.5">
+    {
+      categories.map((category) => {
+        const active = normalized === `/api/${category.slug}`;
+        return (
+          <details open={active} class="group">
+            <summary
+              class:list={[
+                'flex cursor-pointer list-none items-baseline gap-2 px-2 py-1.5 text-[0.74rem] [&::-webkit-details-marker]:hidden',
+                active ? 'text-primary' : 'text-base-content/60 hover:text-base-content',
+              ]}
+            >
+              <span class="w-3 shrink-0 text-[0.58rem] text-base-content/25 transition-transform group-open:rotate-90">
+                ▸
+              </span>
+              <a href={`/api/${category.slug}`} class="flex-1 hover:text-base-content">
+                {category.title}
+              </a>
+              <span class="text-[0.58rem] text-base-content/25">{category.packages.length}</span>
+            </summary>
+
+            <ul class="mb-2 ml-[1.35rem] border-l border-base-300 pl-2">
+              {category.packages.map((pkg) => (
+                <li>
+                  <a
+                    href={`/api/${category.slug}#${anchorFor(pkg.name)}`}
+                    title={pkg.name}
+                    class="block truncate py-1 pr-1 text-[0.68rem] text-base-content/55 hover:text-base-content"
+                  >
+                    {pkg.name.replace('@modplayjs/', '')}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </details>
+        );
+      })
+    }
+  </div>
+</nav>

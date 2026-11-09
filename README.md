@@ -87,10 +87,12 @@ chrome --headless --window-size=1200,630 --allow-file-access-from-files \
 
 ## Design
 
-- **Two layouts:** the landing page is a full-width hero under a sticky top
-  bar (`layout="top"` in `Base.astro`); every other page keeps the numbered
-  rail on the left, because reference pages are read by jumping between
-  sections. Both share the same four destinations and the same footer.
+- **Two layouts:** the landing page and the two app pages are single-column
+  pages under the sticky top bar (`layout="top"` in `Base.astro`); the library
+  reference adds a fixed left sidebar (`layout="docs"`) listing the categories
+  and the packages of the open one. On narrow screens the same tree opens from
+  an “API contents” disclosure above the content. All pages share the same
+  four destinations and the same footer.
 - **Type:** Silkscreen for the wordmark, Archivo for text, IBM Plex Mono for
   data and labels. Fonts are bundled via Fontsource, not fetched at runtime.
 - **Colour:** a DaisyUI theme named `modplay` in `src/styles/global.css`,

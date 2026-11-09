@@ -4,15 +4,15 @@ import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import '@fontsource-variable/archivo';
 import '../styles/global.css';
+import ApiNav from '../components/ApiNav.astro';
 import Footer from '../components/Footer.astro';
-import Rail from '../components/Rail.astro';
 import TopBar from '../components/TopBar.astro';
 
 interface Props {
   title: string;
   description?: string;
-  /** `top` is the landing layout: a top bar and full-width content, no rail. */
-  layout?: 'rail' | 'top';
+  /** `top` is a single page under the top bar; `docs` adds the API sidebar. */
+  layout?: 'top' | 'docs';
   /** Pages that must not be indexed (the 404) get no canonical and a robots tag. */
   noindex?: boolean;
 }
@@ -20,12 +20,12 @@ interface Props {
 const {
   title,
   description = 'modplayjs is a TypeScript tracker and chiptune engine: loaders ported from libxmp and OpenMPT, a cRSID-derived SID player, and Android and Quest shells.',
-  layout = 'rail',
+  layout = 'top',
   noindex = false,
 } = Astro.props;
 
 const path = Astro.url.pathname;
-const isTop = layout === 'top';
+const isDocs = layout === 'docs';
 
 // Static output is written as directory indexes, and Cloudflare serves a
 // folder index with a trailing slash, so that is the canonical form.
@@ -114,29 +114,39 @@ const structuredData = site && !noindex
       >Skip to content</a
     >
 
-    {isTop && <TopBar path={path} />}
+    <TopBar path={path} />
 
-    <div
-      class:list={[
-        'w-full',
-        !isTop &&
-          'mx-auto grid max-w-6xl grid-cols-1 px-4 sm:px-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-x-14 lg:px-8',
-      ]}
-    >
-      {!isTop && <Rail path={path} />}
+    {
+      isDocs ? (
+        <div class="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+          <div class="lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-x-12">
+            <aside class="hidden lg:block" aria-label="API contents">
+              <div class="sticky top-14 max-h-[calc(100vh-3.5rem)] overflow-y-auto border-r border-base-300 py-8 pr-5">
+                <ApiNav path={path} />
+              </div>
+            </aside>
 
-      <main
-        id="main"
-        class:list={[
-          'min-w-0',
-          isTop
-            ? 'mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6 lg:px-8'
-            : 'pb-16 lg:py-10',
-        ]}
-      >
-        <slot />
-        <Footer />
-      </main>
-    </div>
+            <main id="main" class="min-w-0 pb-16 pt-6 lg:py-8">
+              <details class="mb-8 border border-base-300 lg:hidden">
+                <summary class="cursor-pointer px-4 py-3 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-base-content/60">
+                  API contents
+                </summary>
+                <div class="border-t border-base-300 p-3">
+                  <ApiNav path={path} />
+                </div>
+              </details>
+
+              <slot />
+              <Footer />
+            </main>
+          </div>
+        </div>
+      ) : (
+        <main id="main" class="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6 lg:px-8">
+          <slot />
+          <Footer />
+        </main>
+      )
+    }
   </body>
 </html>

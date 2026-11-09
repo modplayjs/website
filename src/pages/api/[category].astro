@@ -18,7 +18,7 @@ const loaderNames = new Set(category.packages.map((pkg) => pkg.name.replace('@mo
 const formats = category.slug === 'formats' ? formatRows.filter((row) => loaderNames.has(row.loader)) : [];
 ---
 
-<Base title={`${category.title} — modplayjs API`} description={category.blurb}>
+<Base title={`${category.title} — modplayjs API`} description={category.blurb} layout="docs">
   <div class="breadcrumbs py-0 font-mono text-[0.64rem] text-base-content/30">
     <ul>
       <li><a href="/api" class="hover:text-primary">Library API</a></li>
@@ -60,71 +60,62 @@ const formats = category.slug === 'formats' ? formatRows.filter((row) => loaderN
   }
 
   <Section index="01" title="Packages" note={`${category.packages.length} pkg`}>
-    <div class="overflow-x-auto">
-      <table class="table table-sm">
-        <thead>
-          <tr class="border-base-300">
-            <th class="w-64 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
-              Package
-            </th>
-            <th class="w-20 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
-              Version
-            </th>
-            <th class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
-              Role
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {
-            category.packages.map((pkg) => (
-              <tr class="border-base-300/60 align-top hover:bg-base-200/60">
-                <td class="py-3">
-                  <span class="font-mono text-[0.76rem] text-base-content/90">{pkg.name}</span>
-                  {pkg.tag && (
-                    <span class="mt-1 block font-mono text-[0.58rem] uppercase tracking-[0.14em] text-warning/70">
-                      {pkg.tag}
-                    </span>
-                  )}
-                </td>
-                <td class="py-3 font-mono text-[0.7rem] text-base-content/40">{pkg.version}</td>
-                <td class="py-3 text-[0.84rem] leading-relaxed text-base-content/55">{pkg.role}</td>
-              </tr>
-            ))
-          }
-        </tbody>
-      </table>
+    <div class="hidden border-b border-base-300 pb-2 sm:grid sm:grid-cols-[minmax(0,17rem)_4rem_minmax(0,1fr)] sm:gap-5">
+      <span class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
+        Package
+      </span>
+      <span class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
+        Version
+      </span>
+      <span class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
+        Role
+      </span>
+    </div>
+    <div class="border-t border-base-300 sm:border-t-0">
+      {
+        category.packages.map((pkg) => (
+          <div
+            id={`pkg-${pkg.name.split('/').pop()}`}
+            class="scroll-mt-24 grid gap-1 border-b border-base-300/60 py-3 sm:grid-cols-[minmax(0,17rem)_4rem_minmax(0,1fr)] sm:gap-5 sm:hover:bg-base-200/60"
+          >
+            <div class="min-w-0">
+              <span class="break-all font-mono text-[0.78rem] text-base-content/90">{pkg.name}</span>
+              {pkg.tag && (
+                <span class="mt-1 block font-mono text-[0.58rem] uppercase tracking-[0.14em] text-warning/70">
+                  {pkg.tag}
+                </span>
+              )}
+            </div>
+            <span class="font-mono text-[0.7rem] text-base-content/40 sm:pt-0.5">{pkg.version}</span>
+            <p class="text-[0.84rem] leading-relaxed text-base-content/55 sm:pt-0.5">{pkg.role}</p>
+          </div>
+        ))
+      }
     </div>
   </Section>
 
   {
     category.slug === 'formats' && (
       <Section index="02" title="Extensions" note={`${formats.length} rows`}>
-        <div class="overflow-x-auto">
-          <table class="table table-sm">
-            <thead>
-              <tr class="border-base-300">
-                <th class="w-56 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
-                  Format
-                </th>
-                <th class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
-                  Extensions
-                </th>
-                <th class="w-36 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
-                  Loader
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {formats.map((row) => (
-                <tr class="border-base-300/60 hover:bg-base-200/60">
-                  <td class="py-2.5 text-[0.84rem] text-base-content/85">{row.format}</td>
-                  <td class="py-2.5 font-mono text-[0.72rem] text-base-content/55">{row.extensions}</td>
-                  <td class="py-2.5 font-mono text-[0.7rem] text-base-content/40">{row.loader}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div class="hidden border-b border-base-300 pb-2 sm:grid sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_8rem] sm:gap-5">
+          <span class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
+            Format
+          </span>
+          <span class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
+            Extensions
+          </span>
+          <span class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
+            Loader
+          </span>
+        </div>
+        <div class="border-t border-base-300 sm:border-t-0">
+          {formats.map((row) => (
+            <div class="grid gap-1 border-b border-base-300/60 py-2.5 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_8rem] sm:gap-5 sm:hover:bg-base-200/60">
+              <span class="text-[0.84rem] text-base-content/85">{row.format}</span>
+              <span class="font-mono text-[0.72rem] text-base-content/55">{row.extensions}</span>
+              <span class="font-mono text-[0.7rem] text-base-content/40">{row.loader}</span>
+            </div>
+          ))}
         </div>
       </Section>
     )
