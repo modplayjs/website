@@ -55,10 +55,10 @@ not attached does not resolve, and adding both would serve the same HTML under
 two names, so redirect `www.modplayjs.org` to the apex with a Cloudflare
 Redirect Rule if that record exists.
 
-For Cloudflare's Git integration the build command is `npm run build` and the
-deploy command `npx wrangler deploy`; no environment variable is required.
-
-There is no git remote for this repository yet; nothing is pushed anywhere.
+The repository is connected to Cloudflare's Git integration. A push to `main`
+runs `npm run build` and then `npx wrangler deploy`; there is no separate token
+or manual step. `npm run deploy` still exists for a local build and deploy with
+Wrangler credentials.
 
 ## SEO
 
@@ -77,6 +77,10 @@ Everything below is emitted from `SITE_URL`, which defaults to
 
 `public/_headers` gives the hashed `/assets/*` files a one-year immutable
 cache and adds `nosniff` and a referrer policy everywhere.
+
+Cloudflare prepends its managed Content Signals block to the served
+`/robots.txt`; the generated `Allow` and `Sitemap` lines follow it. The file in
+`dist/` contains only the generated part.
 
 The social card is `design/og-card.html`, rendered at 1200 × 630:
 
