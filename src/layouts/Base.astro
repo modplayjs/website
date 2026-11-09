@@ -13,16 +13,57 @@ interface Props {
   description?: string;
   /** `top` is the landing layout: a top bar and full-width content, no rail. */
   layout?: 'rail' | 'top';
+  /** Pages that must not be indexed (the 404) get no canonical and a robots tag. */
+  noindex?: boolean;
 }
 
 const {
   title,
-  description = 'modplayjs — a tracker and chiptune player engine in TypeScript, ported from libxmp, OpenMPT and cRSID and verified against the C references.',
+  description = 'modplayjs is a TypeScript tracker and chiptune engine: loaders ported from libxmp and OpenMPT, a cRSID-derived SID player, and Android and Quest shells.',
   layout = 'rail',
+  noindex = false,
 } = Astro.props;
 
 const path = Astro.url.pathname;
 const isTop = layout === 'top';
+
+// Static output is written as directory indexes, and Cloudflare serves a
+// folder index with a trailing slash, so that is the canonical form.
+const site = Astro.site;
+const canonical =
+  site && !noindex
+    ? new URL(path.endsWith('/') ? path : `${path}/`, site).href
+    : undefined;
+const socialImage = site ? new URL('/og.png', site).href : undefined;
+
+// The same two objects on every page: the site, and the code it documents.
+// SoftwareSourceCode rather than SoftwareApplication, because the subject is a
+// library; the apps have their own pages.
+const structuredData = site && !noindex
+  ? {
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'WebSite',
+          '@id': `${site.href}#website`,
+          url: site.href,
+          name: 'modplayjs',
+          description,
+          inLanguage: 'en',
+        },
+        {
+          '@type': 'SoftwareSourceCode',
+          name: 'modplayjs',
+          description:
+            'A TypeScript tracker and chiptune engine: ported format loaders, a software mixer and plugin interfaces for formats, DSPs and outputs.',
+          codeRepository: 'https://github.com/modplayjs/modplayjs',
+          license: 'https://opensource.org/license/bsd-3-clause',
+          programmingLanguage: 'TypeScript',
+          author: { '@type': 'Person', name: 'Bitti09' },
+        },
+      ],
+    }
+  : undefined;
 ---
 
 <!doctype html>
@@ -32,11 +73,39 @@ const isTop = layout === 'top';
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    {canonical && <link rel="canonical" href={canonical} />}
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#0b0a12" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    {site && <link rel="sitemap" href="/sitemap-index.xml" />}
+
+    <meta property="og:site_name" content="modplayjs" />
+    <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:type" content="website" />
+    {canonical && <meta property="og:url" content={canonical} />}
+    {
+      socialImage && (
+        <>
+          <meta property="og:image" content={socialImage} />
+          <meta property="og:image:type" content="image/png" />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+          <meta property="og:image:alt" content="modplayjs — tracker & chiptune engine" />
+        </>
+      )
+    }
+    <meta name="twitter:card" content={socialImage ? 'summary_large_image' : 'summary'} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    {socialImage && <meta name="twitter:image" content={socialImage} />}
+
+    {
+      structuredData && (
+        <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+      )
+    }
   </head>
   <body class="min-h-screen bg-base-100 font-sans text-base-content antialiased">
     <a

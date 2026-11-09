@@ -1,0 +1,9 @@
+# Astro writes every asset under /assets/ with a content hash in its name, so
+# it can be cached for a year. Everything else keeps the Workers default
+# (max-age=0, must-revalidate), which is what HTML wants.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
