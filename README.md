@@ -16,8 +16,8 @@ npm run preview        # serves dist/ with Astro
 npm run preview:worker # serves dist/ the way Workers will
 ```
 
-`build` needs `SITE_URL` to emit canonical links and a sitemap; see
-[Deploy](#deploy).
+Canonical links and the sitemap use `https://modplayjs.org`; `SITE_URL`
+overrides it. See [Deploy](#deploy).
 
 ## Where content lives
 
@@ -31,7 +31,7 @@ Almost everything is data, not markup:
 | `src/pages/xr.astro` | XR app page |
 | `src/pages/api/index.astro` | API index |
 | `src/pages/api/[category].astro` | one page per API category, generated from `categories` |
-| `src/pages/robots.txt.ts` | `robots.txt`, with the sitemap line only when `SITE_URL` is known |
+| `src/pages/robots.txt.ts` | `robots.txt`, with the sitemap line built from the same origin |
 
 Adding a package means adding one entry to `categories` in
 `src/data/site.ts`; the API index, category page and package counts follow.
@@ -39,26 +39,31 @@ Adding a package means adding one entry to `categories` in
 ## Deploy
 
 The site is a Workers **static assets** project: no Worker script, no adapter,
-no server rendering. `wrangler.jsonc` points at `dist/` and asks Workers to
-serve `404.html` with a 404 status for anything that is not a file. Worker
-names are account-wide, so change `name` there if `modplayjs-webpage` is taken.
+no server rendering. `wrangler.jsonc` points at `dist/`, serves `404.html` with
+a 404 status for anything that is not a file, and attaches the Worker to
+`modplayjs.org` as a custom domain. The zone must be in the same Cloudflare
+account; Wrangler creates the DNS record and the certificate on deploy.
 
 ```bash
-SITE_URL=https://modplayjs-webpage.<account>.workers.dev npm run deploy
+npm run deploy   # build, then wrangler deploy
 ```
 
-`deploy` refuses to run without `SITE_URL`: canonical links, `og:url` and the
-sitemap are baked into the HTML at build time, and a deploy without them
-advertises the wrong origin. For Cloudflare's Git integration set `SITE_URL`
-as a build variable and use `npm run build` with `npx wrangler deploy`.
+The build bakes `https://modplayjs.org` into canonical links, `og:url` and the
+sitemap. `SITE_URL` overrides that origin for a staging deploy without editing
+the committed value. No `www` custom domain is configured: a hostname that is
+not attached does not resolve, and adding both would serve the same HTML under
+two names, so redirect `www.modplayjs.org` to the apex with a Cloudflare
+Redirect Rule if that record exists.
 
-There is no remote for this repository yet; nothing is pushed anywhere.
+For Cloudflare's Git integration the build command is `npm run build` and the
+deploy command `npx wrangler deploy`; no environment variable is required.
+
+There is no git remote for this repository yet; nothing is pushed anywhere.
 
 ## SEO
 
-Everything below is emitted only when `SITE_URL` is set. Without it the build
-still works, but no canonical is written and no sitemap is generated, rather
-than pointing at a host that does not serve the page.
+Everything below is emitted from `SITE_URL`, which defaults to
+`https://modplayjs.org` in `astro.config.mjs`.
 
 | Output | Where |
 | --- | --- |
@@ -67,7 +72,7 @@ than pointing at a host that does not serve the page.
 | Open Graph and Twitter tags | `Base.astro`, image is `public/og.png` |
 | JSON-LD | `WebSite` + `SoftwareSourceCode` on every page |
 | `sitemap-index.xml`, `sitemap-0.xml` | `@astrojs/sitemap` |
-| `robots.txt` | generated from `site`, so the sitemap URL cannot drift |
+| `robots.txt` | generated from the same origin, so the sitemap URL cannot drift |
 | `404` | `noindex`, no canonical, served by Workers with a 404 status |
 
 `public/_headers` gives the hashed `/assets/*` files a one-year immutable
