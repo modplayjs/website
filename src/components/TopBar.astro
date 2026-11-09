@@ -1,0 +1,80 @@
+---
+import { repository } from '../data/site';
+
+interface Props {
+  path: string;
+}
+
+const { path } = Astro.props;
+const items = [
+  { label: 'Index', href: '/', active: path === '/' },
+  { label: 'Android', href: '/android', active: path.startsWith('/android') },
+  { label: 'XR', href: '/xr', active: path.startsWith('/xr') },
+  { label: 'Library API', href: '/api', active: path.startsWith('/api') },
+];
+---
+
+<header
+  class="sticky top-0 z-40 border-b border-base-300 bg-base-100/95 backdrop-blur supports-[backdrop-filter]:bg-base-100/80"
+>
+  <div class="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+    <a href="/" class="font-display text-[1.05rem] leading-none tracking-tight">
+      modplay<span class="text-primary">js</span>
+    </a>
+
+    <nav class="hidden items-center gap-1 sm:flex" aria-label="Sections">
+      {
+        items.map((item) => (
+          <a
+            href={item.href}
+            aria-current={item.active ? 'page' : undefined}
+            class:list={[
+              'px-3 py-2 font-mono text-[0.68rem] uppercase tracking-[0.12em] transition-colors',
+              item.active
+                ? 'text-primary'
+                : 'text-base-content/45 hover:text-base-content',
+            ]}
+          >
+            {item.label}
+          </a>
+        ))
+      }
+      <a
+        href={repository}
+        class="ml-2 flex items-center gap-1 border-l border-base-300 pl-4 font-mono text-[0.68rem] uppercase tracking-[0.12em] text-base-content/45 transition-colors hover:text-base-content"
+        >Source <span aria-hidden="true">↗</span></a
+      >
+    </nav>
+
+    <div class="dropdown dropdown-end sm:hidden">
+      <div
+        tabindex="0"
+        role="button"
+        class="btn btn-ghost btn-sm font-mono text-[0.66rem] uppercase tracking-[0.14em]"
+      >
+        Menu
+      </div>
+      <ul
+        tabindex="0"
+        class="menu dropdown-content z-50 mt-2 w-56 border border-base-300 bg-base-200 p-2"
+      >
+        {
+          items.map((item) => (
+            <li>
+              <a
+                href={item.href}
+                aria-current={item.active ? 'page' : undefined}
+                class:list={[item.active && 'bg-base-200 text-primary']}
+              >
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+        <li>
+          <a href={repository}>Source ↗</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</header>

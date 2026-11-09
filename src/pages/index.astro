@@ -1,7 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
-import Section from '../components/Section.astro';
-import { androidVersion, categories, figures, formatRows, libraryVersion, xrVersion } from '../data/site';
+import { androidVersion, categories, figures, formatRows, xrVersion } from '../data/site';
 
 const stages = [
   { no: '01', name: 'File', text: 'A module, a SID tune or an ordinary audio file, from disk or a URL.' },
@@ -16,52 +15,173 @@ const surfaces = [
     href: '/android',
     name: 'Android',
     meta: `${androidVersion} · Android 15+ · arm64-v8a`,
-    text: 'Folders through the Storage Access Framework, a Room index, favourites and recents, background playback, a live pattern view.',
+    text: 'Folder trees through SAF, a Room index, favourites and recents, background playback, a live pattern view.',
   },
   {
     href: '/xr',
     name: 'modplay XR',
     meta: `${xrVersion} · Quest 3 / 3S · Horizon OS v207+`,
-    text: 'Meta Spatial SDK panels, Interaction SDK hands and controllers, one audio object per channel, room-sized spatial ring.',
+    text: 'Meta Spatial SDK panels, Interaction SDK hands and controllers, one audio object per channel, room-sized ring.',
   },
 ];
+
+const families = [...new Set(formatRows.map((row) => row.family))].map((name) => ({
+  name,
+  rows: formatRows.filter((row) => row.family === name),
+}));
+
+const packageCount = categories.reduce((sum, category) => sum + category.packages.length, 0);
+const loaders = formatRows.filter((row) => row.loader.startsWith('fmt-')).length;
+const extensionCount = new Set(
+  formatRows.flatMap((row) => row.extensions.split(',').map((extension) => extension.trim())),
+).size;
+
+// Decorative pattern window: the same grid the app draws, with a static row
+// set. It is a UI reference, not a transcription of a particular tune.
+const pattern = [
+  { n: '00', cells: [['C-4', '01', '40', 'A06'], ['...', '..', '..', '...'], ['G-3', '05', '32', '000'], ['D-4', '02', '28', 'C40']] },
+  { n: '01', cells: [['...', '..', '..', '...'], ['C-4', '03', '40', '000'], ['...', '..', '..', '...'], ['...', '..', '..', '...']] },
+  { n: '02', cells: [['A-3', '01', '3C', '000'], ['...', '..', '..', '...'], ['E-3', '05', '30', '000'], ['F-4', '02', '24', '000']] },
+  { n: '03', cells: [['...', '..', '..', '...'], ['G-3', '03', '38', '000'], ['...', '..', '..', '...'], ['...', '..', '..', '...']] },
+  { n: '04', cells: [['C-4', '01', '40', 'A06'], ['...', '..', '..', '...'], ['C-4', '05', '34', '000'], ['A-3', '02', '2A', '000']] },
+  { n: '05', cells: [['...', '..', '..', '...'], ['E-4', '04', '3C', '000'], ['...', '..', '..', '...'], ['...', '..', '..', '...']] },
+  { n: '06', cells: [['G-3', '02', '40', '000'], ['...', '..', '..', '...'], ['G-3', '06', '36', '000'], ['C-4', '03', '30', '000']] },
+  { n: '07', cells: [['...', '..', '..', '...'], ['D-4', '04', '38', '000'], ['...', '..', '..', '...'], ['...', '..', '..', '...']] },
+  { n: '08', cells: [['E-3', '01', '3C', '000'], ['...', '..', '..', '...'], ['B-3', '06', '34', '000'], ['E-4', '03', '2C', '000']] },
+  { n: '09', cells: [['...', '..', '..', '...'], ['...', '..', '..', '...'], ['...', '..', '..', '...'], ['...', '..', '..', '...']] },
+];
+const playingRow = '06';
 ---
 
-<Base title="modplayjs — tracker & chiptune engine">
-  <header class="border-b border-base-300 pb-10">
-    <p class="font-mono text-[0.66rem] uppercase leading-relaxed tracking-[0.2em] text-base-content/40">
-      <span class="mr-3 inline-block size-1.5 bg-primary align-middle"></span>Tracker &amp; chiptune
-      engine · TypeScript · BSD-3-Clause
-    </p>
-    <h1 class="mt-5 font-display text-[clamp(2.1rem,6vw,3.7rem)] leading-[1.02]">
-      modplay<span class="text-primary">js</span>
-    </h1>
-    <p class="mt-6 max-w-[62ch] text-[1.05rem] leading-relaxed text-base-content/70">
-      A player library for tracker modules and chiptunes. The loaders and the mixer are ports of
-      libxmp, OpenMPT and cRSID, and the numbers below are diffs against those C references — not
-      claims about them.
-    </p>
+<Base title="modplayjs — tracker & chiptune engine" layout="top">
+  <header class="relative overflow-hidden border-b border-base-300 pb-14 pt-10 lg:pb-16 lg:pt-16">
+    <div class="grid gap-12 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)] lg:items-center">
+      <div>
+        <p class="font-mono text-[0.66rem] uppercase leading-relaxed tracking-[0.2em] text-base-content/40">
+          <span class="mr-3 inline-block size-1.5 bg-primary align-middle"></span>
+          <span class="whitespace-nowrap">Tracker &amp; chiptune engine</span>
+          <span class="mx-1 text-base-content/20">·</span>
+          <span class="whitespace-nowrap">TypeScript</span>
+          <span class="mx-1 text-base-content/20">·</span>
+          <span class="whitespace-nowrap">BSD-3-Clause</span>
+        </p>
 
-    <dl class="mt-8 grid grid-cols-2 gap-px border border-base-300 bg-base-300 sm:grid-cols-4">
-      {
-        [
-          ['27', 'packages'],
-          ['17', 'format loaders'],
-          ['5,534', 'files in the corpus'],
-          ['0', 'load failures'],
-        ].map(([value, label]) => (
-          <div class="bg-base-100 px-4 py-3">
-            <dt class="font-mono text-[0.6rem] uppercase tracking-[0.16em] text-base-content/35">
-              {label}
-            </dt>
-            <dd class="mt-1 font-mono text-lg text-base-content">{value}</dd>
+        <h1 class="mt-5 font-display text-[clamp(2.4rem,7vw,4.4rem)] leading-[0.98]">
+          modplay<span class="text-primary">js</span>
+        </h1>
+
+        <p class="mt-6 max-w-[54ch] text-[1.06rem] leading-relaxed text-base-content/70">
+          A player library for tracker modules and chiptunes. The loaders and the mixer are ports of
+          libxmp, OpenMPT and cRSID — and the numbers are diffs against those C references, not
+          claims about them.
+        </p>
+
+        <div class="mt-8 flex flex-wrap items-center gap-3">
+          <a
+            href="/api"
+            class="btn btn-primary border-0 font-mono text-[0.7rem] uppercase tracking-[0.14em]"
+            >Read the API</a
+          >
+          <a
+            href="/android"
+            class="btn btn-outline border-base-300 font-mono text-[0.7rem] uppercase tracking-[0.14em]"
+            >Android</a
+          >
+          <a
+            href="/xr"
+            class="btn btn-outline border-base-300 font-mono text-[0.7rem] uppercase tracking-[0.14em]"
+            >XR</a
+          >
+        </div>
+
+        <p class="mt-6 font-mono text-[0.66rem] uppercase tracking-[0.14em] text-base-content/35">
+          {packageCount} packages · {loaders} loaders · 0 load failures
+        </p>
+      </div>
+
+      <div class="lg:border-l lg:border-base-300 lg:pl-10">
+        <div class="border border-base-300 bg-base-200/60 shadow-[0_0_0_1px_rgba(0,0,0,0.25)]">
+          <div
+            class="flex items-baseline justify-between gap-3 border-b border-base-300 px-3 py-2 font-mono text-[0.6rem] uppercase tracking-[0.14em] text-base-content/40"
+          >
+            <span>Pattern 00</span>
+            <span class="text-primary">▶ row 06 / 64</span>
           </div>
-        ))
-      }
-    </dl>
+
+          <div class="overflow-x-auto">
+            <div class="px-3 py-2">
+              <div
+                class="grid grid-cols-[1.6rem_repeat(3,minmax(0,1fr))] gap-x-3 pb-1 font-mono text-[0.56rem] uppercase tracking-[0.12em] text-base-content/25 sm:grid-cols-[1.6rem_repeat(4,minmax(0,1fr))]"
+              >
+                <span></span>
+                <span>ch 01</span>
+                <span>ch 02</span>
+                <span>ch 03</span>
+                <span class="hidden sm:block">ch 04</span>
+              </div>
+
+              {
+                pattern.map((row) => (
+                  <div
+                    class:list={[
+                      'grid grid-cols-[1.6rem_repeat(3,minmax(0,1fr))] gap-x-3 py-[1px] font-mono text-[0.62rem] leading-[1.55] sm:grid-cols-[1.6rem_repeat(4,minmax(0,1fr))] sm:text-[0.64rem] lg:text-[0.7rem]',
+                      row.n === playingRow
+                        ? 'bg-base-300/60 text-base-content shadow-[inset_2px_0_0_var(--color-primary)]'
+                        : 'text-base-content/35',
+                    ]}
+                  >
+                    <span class:list={[row.n === playingRow ? 'text-primary' : 'text-base-content/20']}>
+                      {row.n}
+                    </span>
+                    {row.cells.map((cell, channel) => (
+                      <span
+                        class:list={[
+                          'gap-1 tabular-nums whitespace-nowrap',
+                          channel === 3 ? 'hidden sm:flex' : 'flex',
+                        ]}
+                      >
+                        <span class="text-info">{cell[0]}</span>
+                        <span class="text-success/80">{cell[1]}</span>
+                        <span class="text-warning/80">{cell[2]}</span>
+                        <span class="text-secondary/80">{cell[3]}</span>
+                      </span>
+                    ))}
+                  </div>
+                ))
+              }
+            </div>
+          </div>
+
+          <div
+            class="flex items-baseline justify-between gap-3 border-t border-base-300 px-3 py-1.5 font-mono text-[0.56rem] uppercase tracking-[0.14em] text-base-content/30"
+          >
+            <span>spd 06</span>
+            <span>bpm 125</span>
+            <span>32 bus</span>
+            <span class="text-base-content/20">foa rev</span>
+          </div>
+        </div>
+
+        <p class="mt-2 text-right font-mono text-[0.58rem] uppercase tracking-[0.14em] text-base-content/25">
+          the same grid the app draws
+        </p>
+      </div>
+    </div>
   </header>
 
-  <Section index="01" title="Signal path" note="pull, not push">
+  <section class="mt-16">
+    <div class="mb-8 grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-end lg:gap-12">
+      <div>
+        <p class="font-mono text-[0.64rem] uppercase tracking-[0.2em] text-primary">01 / Signal path</p>
+        <h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Five stages, one pull.</h2>
+      </div>
+      <p class="max-w-[62ch] text-[0.92rem] leading-relaxed text-base-content/55">
+        The core never pushes samples. An output asks <span class="font-mono text-[0.8rem]">playBuffer()</span>
+        for exactly what it can take, so the same mixer feeds an AudioWorklet, an offline WAV writer
+        and the native Android sink without a playback thread of its own.
+      </p>
+    </div>
+
     <div class="grid gap-px border border-base-300 bg-base-300 sm:grid-cols-2 lg:grid-cols-5">
       {
         stages.map((stage) => (
@@ -70,103 +190,121 @@ const surfaces = [
               <span class="font-mono text-[0.6rem] text-base-content/30">{stage.no}</span>
               <span class="h-px flex-1 bg-base-300" />
             </div>
-            <h3 class="mt-3 font-mono text-[0.72rem] uppercase tracking-[0.16em] text-base-content">
-              {stage.name}
-            </h3>
+            <h3 class="mt-3 font-mono text-[0.72rem] uppercase tracking-[0.16em]">{stage.name}</h3>
             <p class="mt-2 text-[0.8rem] leading-relaxed text-base-content/55">{stage.text}</p>
           </div>
         ))
       }
     </div>
-    <p class="mt-4 max-w-[72ch] font-mono text-[0.68rem] leading-relaxed text-base-content/35">
-      The core never pushes samples. An output asks <code class="text-base-content/60">playBuffer()</code>
-      for exactly what it can take, so the same mixer feeds an AudioWorklet, an offline WAV writer and
-      the native Android sink without a playback thread of its own.
-    </p>
-  </Section>
+  </section>
 
-  <Section index="02" title="Formats" note={`${formatRows.length} rows`}>
-    <div class="overflow-x-auto">
-      <table class="table table-sm">
-        <thead>
-          <tr class="border-base-300">
-            <th class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
-              Format
-            </th>
-            <th class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
-              Extensions
-            </th>
-            <th class="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-base-content/35">
-              Loader
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {
-            formatRows.map((row) => (
-              <tr class="border-base-300/60 hover:bg-base-200/60">
-                <td class="py-2.5 align-top">
-                  <span class="mr-2 font-mono text-[0.56rem] uppercase tracking-[0.14em] text-base-content/25">
-                    {row.family}
-                  </span>
-                  <span class="text-[0.84rem] text-base-content/90">{row.format}</span>
-                  <span class="mt-0.5 block max-w-[52ch] text-[0.72rem] leading-snug text-base-content/40">
-                    {row.note}
-                  </span>
-                </td>
-                <td class="py-2.5 align-top font-mono text-[0.72rem] text-base-content/55">
-                  {row.extensions}
-                </td>
-                <td class="py-2.5 align-top font-mono text-[0.7rem] text-base-content/40">
-                  {row.loader}
-                </td>
-              </tr>
-            ))
-          }
-        </tbody>
-      </table>
+  <section class="mt-20">
+    <div class="mb-8 grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-end lg:gap-12">
+      <div>
+        <p class="font-mono text-[0.64rem] uppercase tracking-[0.2em] text-primary">02 / Formats</p>
+        <h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+          {loaders} loaders, {extensionCount} extensions.
+        </h2>
+      </div>
+      <p class="max-w-[62ch] text-[0.92rem] leading-relaxed text-base-content/55">
+        Each format is a package, not a branch in a parser. The core imports none of them; register
+        the loaders you need and the rest stay out of the bundle.
+      </p>
     </div>
-  </Section>
 
-  <Section index="03" title="Verified against C" note="reference oracles, not expectations">
+    <div class="grid gap-px border border-base-300 bg-base-300 sm:grid-cols-2 lg:grid-cols-3">
+      {
+        families.map((family) => (
+          <div class:list={['bg-base-100 p-4', family.rows.length > 6 && 'sm:col-span-2 lg:col-span-2']}>
+            <p class="font-mono text-[0.58rem] uppercase tracking-[0.18em] text-base-content/30">
+              {family.name}
+            </p>
+            <div class="mt-3 flex flex-wrap gap-1.5">
+              {family.rows.map((row) => (
+                <span
+                  class="inline-flex items-baseline gap-1.5 border border-base-300 px-2 py-1 font-mono text-[0.64rem] leading-tight text-base-content/75"
+                  title={row.extensions}
+                >
+                  {row.format}
+                  <span class="text-base-content/25">{row.extensions.split(',')[0]}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        ))
+      }
+    </div>
+    <p class="mt-3 font-mono text-[0.66rem] uppercase tracking-[0.12em] text-base-content/35">
+      Every extension and loader note:
+      <a href="/api/formats" class="link link-hover text-base-content/60 hover:text-primary">/api/formats →</a>
+    </p>
+  </section>
+
+  <blockquote class="mt-20 border-y border-base-300 py-10 text-center">
+    <p class="mx-auto max-w-3xl text-xl leading-relaxed text-base-content/85 sm:text-2xl">
+      “Vibe-coded, then verified like it was written by someone you don’t trust.”
+    </p>
+    <footer class="mt-3 font-mono text-[0.62rem] uppercase tracking-[0.18em] text-base-content/30">
+      From the project README
+    </footer>
+  </blockquote>
+
+  <section class="mt-20">
+    <div class="mb-8 grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-end lg:gap-12">
+      <div>
+        <p class="font-mono text-[0.64rem] uppercase tracking-[0.2em] text-primary">03 / Verification</p>
+        <h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Measured against C.</h2>
+      </div>
+      <p class="max-w-[62ch] text-[0.92rem] leading-relaxed text-base-content/55">
+        Loader output is compared byte for byte with libxmp’s <span class="font-mono text-[0.8rem]">ModuleData</span>,
+        mixer state is replayed frame by frame against libxmp’s own dumps, and the SID port is
+        sample-exact against a cRSID oracle build.
+      </p>
+    </div>
+
     <div class="grid gap-px border border-base-300 bg-base-300 sm:grid-cols-2 lg:grid-cols-4">
       {
         figures.map((figure) => (
-          <div class="bg-base-100 p-4">
-            <p class="font-mono text-[1.35rem] leading-none text-base-content">{figure.value}</p>
-            <p class="mt-2 max-w-[24ch] font-mono text-[0.64rem] leading-relaxed text-base-content/40">
+          <div class="bg-base-100 p-5">
+            <p class="font-mono text-[1.5rem] leading-none">{figure.value}</p>
+            <p class="mt-2 max-w-[26ch] font-mono text-[0.64rem] leading-relaxed text-base-content/40">
               {figure.label}
             </p>
           </div>
         ))
       }
     </div>
-    <div class="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <p class="max-w-[64ch] text-[0.9rem] leading-relaxed text-base-content/60">
-        Loader output is compared byte for byte against libxmp’s <span class="font-mono text-[0.82rem]">ModuleData</span>.
-        Mixer state is replayed frame by frame against libxmp’s own voice dumps.
-        <span class="font-mono text-[0.82rem]">fmt-sid</span> is sample-exact against a cRSID oracle build.
-      </p>
-      <p class="max-w-[64ch] text-[0.9rem] leading-relaxed text-base-content/60">
-        The corpus is deliberately larger than the supported set: 546 files of 13 formats have no
-        parser here, so the claim is “zero failures in everything a reference parser also reads”, not
-        “everything loads”.
+
+    <p class="mt-5 max-w-[70ch] text-[0.9rem] leading-relaxed text-base-content/50">
+      The corpus is deliberately larger than the supported set: 546 files of 13 formats have no
+      parser here, so the claim is “zero failures in everything a reference parser also reads”, not
+      “everything loads”.
+    </p>
+  </section>
+
+  <section class="mt-20">
+    <div class="mb-8 grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-end lg:gap-12">
+      <div>
+        <p class="font-mono text-[0.64rem] uppercase tracking-[0.2em] text-primary">04 / Surfaces</p>
+        <h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Two shells, one engine.</h2>
+      </div>
+      <p class="max-w-[62ch] text-[0.92rem] leading-relaxed text-base-content/55">
+        The phone app and the headset app share the player, the sample store and the settings model.
+        What differs is the shell around them: a list and a player bar, or panels in a room.
       </p>
     </div>
-  </Section>
 
-  <Section index="04" title="Surfaces" note="engine shared, shells separate">
     <div class="border-t border-base-300">
       {
         surfaces.map((surface) => (
           <a
             href={surface.href}
-            class="group grid gap-2 border-b border-base-300 py-5 transition-colors hover:bg-base-200/50 sm:grid-cols-[11rem_minmax(0,1fr)_auto] sm:items-baseline sm:gap-6"
+            class="group grid gap-2 border-b border-base-300 py-6 transition-colors hover:bg-base-200/50 sm:grid-cols-[12rem_minmax(0,1fr)_auto] sm:items-baseline sm:gap-8"
           >
-            <h3 class="text-[0.95rem] font-semibold text-base-content group-hover:text-primary">
+            <h3 class="text-lg font-semibold text-base-content group-hover:text-primary">
               {surface.name}
             </h3>
-            <p class="max-w-[62ch] text-[0.86rem] leading-relaxed text-base-content/55">
+            <p class="max-w-[64ch] text-[0.9rem] leading-relaxed text-base-content/55">
               {surface.text}
             </p>
             <p class="font-mono text-[0.64rem] text-base-content/35">{surface.meta}</p>
@@ -174,29 +312,42 @@ const surfaces = [
         ))
       }
     </div>
-  </Section>
+    <p class="mt-3 font-mono text-[0.66rem] uppercase tracking-[0.12em] text-base-content/30">
+      Both builds are still in progress; downloads appear when signed builds exist.
+    </p>
+  </section>
 
-  <Section index="05" title="Library API" note={`${categories.reduce((n, c) => n + c.packages.length, 0)} packages`}>
-    <div class="border-t border-base-300">
+  <section class="mt-20">
+    <div class="mb-8 grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-end lg:gap-12">
+      <div>
+        <p class="font-mono text-[0.64rem] uppercase tracking-[0.2em] text-primary">05 / Library API</p>
+        <h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Register, then call.</h2>
+      </div>
+      <p class="max-w-[62ch] text-[0.92rem] leading-relaxed text-base-content/55">
+        Three contracts cover the whole extension surface: a format loader, a mixer, an output.
+        Everything else in the library exists to make those three pleasant to implement.
+      </p>
+    </div>
+
+    <div class="grid gap-px border border-base-300 bg-base-300 sm:grid-cols-2 lg:grid-cols-5">
       {
         categories.map((category) => (
-          <a
-            href={`/api/${category.slug}`}
-            class="group grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 border-b border-base-300 py-4 transition-colors hover:bg-base-200/50 sm:grid-cols-[2.5rem_11rem_minmax(0,1fr)_auto] sm:items-baseline sm:gap-x-5"
-          >
-            <span class="font-mono text-[0.66rem] text-base-content/30">{category.order}</span>
-            <span class="text-[0.9rem] text-base-content group-hover:text-primary">
+          <a href={`/api/${category.slug}`} class="group bg-base-100 p-4 transition-colors hover:bg-base-200/60">
+            <div class="flex items-baseline justify-between gap-2">
+              <span class="font-mono text-[0.6rem] text-base-content/30">{category.order}</span>
+              <span class="font-mono text-[0.56rem] uppercase tracking-[0.12em] text-base-content/25">
+                {category.packages.length} pkg
+              </span>
+            </div>
+            <h3 class="mt-3 text-[0.92rem] font-semibold text-base-content group-hover:text-primary">
               {category.title}
-            </span>
-            <span class="col-span-2 mt-1 max-w-[62ch] text-[0.8rem] leading-relaxed text-base-content/45 sm:col-span-1 sm:mt-0">
+            </h3>
+            <p class="mt-1 line-clamp-3 text-[0.78rem] leading-relaxed text-base-content/45">
               {category.blurb}
-            </span>
-            <span class="col-span-2 mt-1 font-mono text-[0.62rem] text-base-content/30 sm:col-span-1 sm:mt-0">
-              {category.packages.length} pkg
-            </span>
+            </p>
           </a>
         ))
       }
     </div>
-  </Section>
+  </section>
 </Base>

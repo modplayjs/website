@@ -33,6 +33,10 @@ Adding a package means adding one entry to `categories` in
 
 ## Design
 
+- **Two layouts:** the landing page is a full-width hero under a sticky top
+  bar (`layout="top"` in `Base.astro`); every other page keeps the numbered
+  rail on the left, because reference pages are read by jumping between
+  sections. Both share the same four destinations and the same footer.
 - **Type:** Silkscreen for the wordmark, Archivo for text, IBM Plex Mono for
   data and labels. Fonts are bundled via Fontsource, not fetched at runtime.
 - **Colour:** a DaisyUI theme named `modplay` in `src/styles/global.css`,
