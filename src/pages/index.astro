@@ -4,7 +4,7 @@ import { androidVersion, categories, figures, formatRows, xrVersion } from '../d
 
 const stages = [
   { no: '01', name: 'File', text: 'A module, a SID tune or an ordinary audio file, from disk or a URL.' },
-  { no: '02', name: 'Loader', text: 'One format plugin parses it into the core’s data model, quirks included.' },
+  { no: '02', name: 'Loader', text: 'One format plugin parses it into the core’s data model.' },
   { no: '03', name: 'Core', text: 'libxmp’s frame loop: order, row, tick, effects, virtual channels.' },
   { no: '04', name: 'Mixer', text: 'A DSP plugin renders each tick to interleaved stereo float.' },
   { no: '05', name: 'Output', text: 'A sink pulls: AudioWorklet, a PCM writer, the Android session.' },
@@ -71,9 +71,9 @@ const playingRow = '06';
         </h1>
 
         <p class="mt-6 max-w-[54ch] text-[1.06rem] leading-relaxed text-base-content/70">
-          A player library for tracker modules and chiptunes. The loaders and the mixer are ports of
-          libxmp, OpenMPT and cRSID — and the numbers are diffs against those C references, not
-          claims about them.
+          A TypeScript library for tracker modules and chiptunes. The format loaders and the mixer
+          are ports of libxmp, OpenMPT and cRSID; the figures on this page are diffs against those
+          C programs.
         </p>
 
         <div class="mt-8 flex flex-wrap items-center gap-3">
@@ -173,12 +173,14 @@ const playingRow = '06';
     <div class="mb-8 grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-end lg:gap-12">
       <div>
         <p class="font-mono text-[0.64rem] uppercase tracking-[0.2em] text-primary">01 / Signal path</p>
-        <h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Five stages, one pull.</h2>
+        <h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+          From file to samples in five stages.
+        </h2>
       </div>
       <p class="max-w-[62ch] text-[0.92rem] leading-relaxed text-base-content/55">
-        The core never pushes samples. An output asks <span class="font-mono text-[0.8rem]">playBuffer()</span>
-        for exactly what it can take, so the same mixer feeds an AudioWorklet, an offline WAV writer
-        and the native Android sink without a playback thread of its own.
+        An output asks <span class="font-mono text-[0.8rem]">playBuffer()</span> for exactly what it
+        can take. The core never pushes samples, so the same mixer feeds an AudioWorklet, an offline
+        WAV writer and the native Android sink without a playback thread of its own.
       </p>
     </div>
 
@@ -207,8 +209,8 @@ const playingRow = '06';
         </h2>
       </div>
       <p class="max-w-[62ch] text-[0.92rem] leading-relaxed text-base-content/55">
-        Each format is a package, not a branch in a parser. The core imports none of them; register
-        the loaders you need and the rest stay out of the bundle.
+        Each format is its own package. The core imports none of them, so a build carries only the
+        loaders it registers.
       </p>
     </div>
 
@@ -240,15 +242,6 @@ const playingRow = '06';
     </p>
   </section>
 
-  <blockquote class="mt-20 border-y border-base-300 py-10 text-center">
-    <p class="mx-auto max-w-3xl text-xl leading-relaxed text-base-content/85 sm:text-2xl">
-      “Vibe-coded, then verified like it was written by someone you don’t trust.”
-    </p>
-    <footer class="mt-3 font-mono text-[0.62rem] uppercase tracking-[0.18em] text-base-content/30">
-      From the project README
-    </footer>
-  </blockquote>
-
   <section class="mt-20">
     <div class="mb-8 grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-end lg:gap-12">
       <div>
@@ -276,9 +269,8 @@ const playingRow = '06';
     </div>
 
     <p class="mt-5 max-w-[70ch] text-[0.9rem] leading-relaxed text-base-content/50">
-      The corpus is deliberately larger than the supported set: 546 files of 13 formats have no
-      parser here, so the claim is “zero failures in everything a reference parser also reads”, not
-      “everything loads”.
+      The corpus is larger than the supported set: 546 files of 13 formats have no parser here. The
+      zero counts refer to files that a reference parser reads as well.
     </p>
   </section>
 
@@ -286,11 +278,13 @@ const playingRow = '06';
     <div class="mb-8 grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-end lg:gap-12">
       <div>
         <p class="font-mono text-[0.64rem] uppercase tracking-[0.2em] text-primary">04 / Surfaces</p>
-        <h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Two shells, one engine.</h2>
+        <h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+          Both apps run the same player core.
+        </h2>
       </div>
       <p class="max-w-[62ch] text-[0.92rem] leading-relaxed text-base-content/55">
-        The phone app and the headset app share the player, the sample store and the settings model.
-        What differs is the shell around them: a list and a player bar, or panels in a room.
+        They share the player, the sample store and the settings model. What differs is the shell: a
+        list and a player bar on the phone, panels in a room on the headset.
       </p>
     </div>
 
@@ -321,11 +315,13 @@ const playingRow = '06';
     <div class="mb-8 grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-end lg:gap-12">
       <div>
         <p class="font-mono text-[0.64rem] uppercase tracking-[0.2em] text-primary">05 / Library API</p>
-        <h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Register, then call.</h2>
+        <h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+          Plugins are a loader, a DSP or an output.
+        </h2>
       </div>
       <p class="max-w-[62ch] text-[0.92rem] leading-relaxed text-base-content/55">
-        Three contracts cover the whole extension surface: a format loader, a mixer, an output.
-        Everything else in the library exists to make those three pleasant to implement.
+        The core registers loaders and DSPs and calls them per row and per tick; an output pulls
+        from the core. Streamed audio takes the same pull path without registering a plugin.
       </p>
     </div>
 
