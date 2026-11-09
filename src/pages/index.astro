@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 import { androidVersion, categories, figures, formatRows, xrVersion } from '../data/site';
 
 const stages = [
-  { no: '01', name: 'File', text: 'A module, a SID tune or an ordinary audio file, from disk or a URL.' },
+  { no: '01', name: 'File', text: 'A module, a SID tune or an ordinary audio file, handed in as bytes.' },
   { no: '02', name: 'Loader', text: 'One format plugin parses it into the core’s data model.' },
   { no: '03', name: 'Core', text: 'libxmp’s frame loop: order, row, tick, effects, virtual channels.' },
   { no: '04', name: 'Mixer', text: 'A DSP plugin renders each tick to interleaved stereo float.' },
