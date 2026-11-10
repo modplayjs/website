@@ -1,0 +1,171 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Section from '../../../components/Section.astro';
+import CodeBlock from '../../../components/CodeBlock.astro';
+import DocTable from '../../../components/DocTable.astro';
+import DocNote from '../../../components/DocNote.astro';
+import { pluginDocs } from '../../../data/site';
+
+const index = pluginDocs.findIndex((doc) => doc.slug === 'dsp');
+const prev = pluginDocs[index - 1]!;
+const next = pluginDocs[index + 1]!;
+---
+
+<Base
+  title="DSP plugin API — modplayjs"
+  description="The DspPlugin contract: renderFrame, reset, onRow, the tick buffer and a minimal oscillator mixer."
+  layout="docs"
+>
+  <div class="breadcrumbs py-0 font-mono text-[0.64rem] text-base-content/30">
+    <ul>
+      <li><a href="/api" class="hover:text-primary">Library API</a></li>
+      <li><a href="/api/plugins" class="hover:text-primary">Plugin authoring</a></li>
+      <li class="text-base-content/50">DSP</li>
+    </ul>
+  </div>
+
+  <header class="mt-3 border-b border-base-300 pb-8">
+    <p class="font-mono text-[0.64rem] uppercase tracking-[0.2em] text-base-content/35">
+      Plugin authoring / 03
+    </p>
+    <h1 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">DSP plugin</h1>
+    <p class="mt-4 max-w-[66ch] text-[0.96rem] leading-relaxed text-base-content/65">
+      A DSP plugin is the mixer. Exactly one is active; it turns the core’s voice and channel state into interleaved
+      stereo float, one tick per call. The core owns timing and state — the DSP owns every sample.
+    </p>
+  </header>
+
+  <Section index="01" title="The interface" note="one render call">
+    <CodeBlock
+      title="DspPlugin"
+      code={`import type { Core, Event } from '@modplayjs/core';
+
+interface DspPlugin {
+  /** Name used by core.setDsp(name). */
+  readonly name: string;
+
+  /** Declared channel budget (Paula = 4, softmixer = module channels). */
+  readonly channels: number;
+
+  /**
+   * Render exactly ticks ticks.
+   * Fill out[0 .. ticks × core.ticksize × 2) with interleaved L,R floats.
+   */
+  renderFrame(core: Core, out: Float32Array, ticks: number): void;
+
+  /** Optional: after the format reader, for each channel on tick 0. */
+  onRow?(core: Core, chn: number, ev: Event): void;
+
+  /** Reset internal state; called on start and stop. */
+  reset(): void;
+}`}
+    />
+    <DocTable
+      columns={['Contract', 'Value']}
+      rows={[
+        ['Buffer length', 'ticks × core.ticksize × 2 floats. One tick is core.ticksize frames; each frame is L,R.'],
+        ['Range', 'Write roughly [-1, 1]. The core clamps before output, but overs drive the limiter.'],
+        ['Tempo', 'Read core.ticksize every call; it is recomputed per tick, so do not cache it across ticks.'],
+        ['Selection', 'core.setDsp(name) only while stopped; it throws StateError while playing.'],
+        ['Reset', 'Called on startPlayer and stopPlayer. Clear phases, ramps and filters here.'],
+        ['onRow', 'Called for every registered DSP after the format reader and effect onRow hooks.'],
+      ]}
+    />
+  </Section>
+
+  <Section index="02" title="What the core gives you" note="read, do not own">
+    <DocTable
+      columns={['Core field', 'Contents']}
+      rows={[
+        ['voiceStates', 'VoiceState[]: chn, root, note, period, pos, smp, start, end, vol, pan, act, flags, old_vl/old_vr, filter state.'],
+        ['channelStates', 'ChannelState[]: the format reader’s output — note, period, volume, pan, envelopes, LFOs, slides, macros.'],
+        ['samples.get(id)', 'SampleData: decoded mono Float32Array, loop/sustain bounds, finetune, volume, c5spd.'],
+        ['ctx', 'CoreContext internals, including ctx.p (order/row/tick) and ctx.s (mixer settings).'],
+        ['quirks', 'The loaded module’s quirk bitmask; the reference mixer branches on it.'],
+        ['module', 'ModuleData: channel count, volbase, c4rate, periodType, speed, bpm.'],
+      ]}
+    />
+    <p class="mt-3 max-w-[74ch] text-[0.86rem] leading-relaxed text-base-content/55">
+      A DSP must implement resampling (nearest / linear / spline), gain ramps, forward and ping-pong loops, sustain
+      loops, sample hot-swap, reverse playback, anti-click and the end-of-voice rules. The shipped
+      <span class="font-mono text-[0.8rem]">@modplayjs/dsp-softmixer</span> is the reference for what “correct” means;
+      it is a frame-accurate port of libxmp’s mixer.
+    </p>
+  </Section>
+
+  <Section index="03" title="A minimal, audible DSP" note="oscillator per voice">
+    <p class="max-w-[74ch] text-[0.9rem] leading-relaxed text-base-content/60">
+      This one ignores sample data and renders an oscillator per active voice. It is short enough to read in full and
+      shows the parts every mixer needs: the tick buffer, voice iteration, volume, pan and a phase per channel. It is
+      not a sample mixer — use it as a starting point, not as a replacement for the softmixer.
+    </p>
+    <CodeBlock
+      title="sine.ts"
+      code={`import { type DspPlugin, Act } from '@modplayjs/core';
+
+/** Amiga PAL clock; valid for modules with PeriodType.AMIGA. */
+const PAL_CLOCK = 7093789.2;
+
+export function createSineMixer(): DspPlugin {
+  const phase = new Float32Array(64);
+
+  return {
+    name: 'sine',
+    channels: 64,
+
+    reset() {
+      phase.fill(0);
+    },
+
+    renderFrame(core, out, ticks) {
+      const frames = ticks * core.ticksize;
+      out.fill(0, 0, frames * 2);
+      const mod = core.module;
+      if (!mod) return;
+
+      for (const v of core.voiceStates) {
+        if (v.act === Act.NONE || v.smp < 0 || v.period <= 0) continue;
+        const hz = PAL_CLOCK / (2 * v.period);
+        const inc = (2 * Math.PI * hz) / core.sampleRate;
+        const gain = Math.min(1, v.vol / mod.volbase);
+        const gl = gain * (1 - v.pan / 255);
+        const gr = gain * (v.pan / 255);
+        let p = phase[v.chn] ?? 0;
+        for (let i = 0; i < frames; i++) {
+          const s = Math.sin(p);
+          out[i * 2] += s * gl;
+          out[i * 2 + 1] += s * gr;
+          p += inc;
+        }
+        phase[v.chn] = p % (2 * Math.PI);
+      }
+    },
+  };
+}`}
+    />
+    <DocNote>
+      Register it, call <span class="font-mono text-[0.8rem]">core.setDsp('sine')</span> after
+      <span class="font-mono text-[0.8rem]">loadModule</span> and before
+      <span class="font-mono text-[0.8rem]">startPlayer</span>, then pull from an output.
+    </DocNote>
+  </Section>
+
+  <Section index="04" title="Rules" note="the sample loop is yours">
+    <ul class="max-w-[74ch] space-y-2 text-[0.88rem] leading-relaxed text-base-content/60">
+      <li>Never call the format reader or the core’s player from <span class="font-mono text-[0.8rem]">renderFrame</span>; render only.</li>
+      <li>Do not allocate inside the loop; allocate in <span class="font-mono text-[0.8rem]">reset</span> or on the first call.</li>
+      <li>The voice’s <span class="font-mono text-[0.8rem]">pos</span> is a double; commit it back after the tick so the next tick continues.</li>
+      <li>A dead voice is <span class="font-mono text-[0.8rem]">v.act === Act.NONE</span>; a releasing voice still sounds.</li>
+      <li>Read <span class="font-mono text-[0.8rem]">core.samples.get(v.smp)</span> each tick; a hot-swapped sample must be picked up through the id.</li>
+    </ul>
+  </Section>
+
+  <nav class="mt-16 flex items-center justify-between gap-4 border-t border-base-300 pt-5">
+    <a href={`/api/plugins/${prev.slug}`} class="font-mono text-[0.66rem] uppercase tracking-[0.14em] text-base-content/35 hover:text-primary">
+      ← {prev.title}
+    </a>
+    <a href={`/api/plugins/${next.slug}`} class="text-right font-mono text-[0.66rem] uppercase tracking-[0.14em] text-base-content/50 hover:text-primary">
+      {next.order} · {next.title} →
+    </a>
+  </nav>
+</Base>

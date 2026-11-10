@@ -2,9 +2,9 @@
 // The site's single source of truth. Versions match the repository; update
 // them together with the package manifests, not by guessing.
 
-export const libraryVersion = '0.2.1';
-export const androidVersion = '0.2.1';
-export const xrVersion = '0.1.0';
+export const libraryVersion = '0.2.2';
+export const androidVersion = '0.2.2';
+export const xrVersion = '0.1.1';
 export const license = 'BSD-3-Clause';
 export const repository = 'https://github.com/modplayjs/modplayjs';
 
@@ -51,7 +51,7 @@ export const categories: Category[] = [
       },
       {
         name: '@modplayjs/playhead',
-        version: libraryVersion,
+        version: '0.3.0',
         role: 'Maps the audio sink\'s consumed frames to the song position, so a pattern view follows the row you hear instead of the row the renderer is ahead on.',
       },
     ],
@@ -179,7 +179,7 @@ core.setDsp('softmixer');   // only while the player is stopped`,
     packages: [
       {
         name: '@modplayjs/dsp-softmixer',
-        version: libraryVersion,
+        version: '0.3.0',
         role: 'The libxmp-parity software mixer in its exact integer domain, with a Paula BLEP mode (mode: "paula"), L/R layouts and XMP_PLAYER_AMPLIFY.',
       },
       {
@@ -211,13 +211,13 @@ core.setDsp('softmixer');   // only while the player is stopped`,
 }
 
 // The output decides when to ask:
-core.playBuffer(out, size, loop?);  // interleaved floats, or -1 at end`,
-      note: 'WebAudioOutput extends this at runtime with pause/resume and an onEnded callback.',
+core.playBuffer(out, size, loop?);  // >0 floats, 0 ended mid-buffer, -1 ended`,
+      note: 'loop defaults to 1 (once); 0 never stops on the loop count. WebAudioOutput extends this with pause/resume and onEnded.',
     },
     packages: [
       {
         name: '@modplayjs/out-webaudio',
-        version: libraryVersion,
+        version: '0.3.0',
         role: 'AudioWorklet output with a SharedArrayBuffer ring (COOP/COEP) and an automatic copy-mode fallback, plus pause/resume that keeps the song position.',
       },
       {
@@ -227,7 +227,7 @@ core.playBuffer(out, size, loop?);  // interleaved floats, or -1 at end`,
       },
       {
         name: '@modplayjs/out-android',
-        version: libraryVersion,
+        version: '0.3.0',
         role: 'Headless player session for the Android shell: settings, transport, capabilities and the command surface the native layer calls into.',
       },
     ],
@@ -408,4 +408,54 @@ export const figures = [
   { value: '110 / 0', label: 'mixer-state frames passed / failed' },
   { value: '1.0000', label: 'render correlation on in-tune fixtures' },
   { value: '48 / 48', label: 'SID tunes sample-exact vs cRSID' },
+];
+
+/**
+ * The plugin-authoring pages. These are contracts, not package lists: the
+ * sidebar and the API index both read this, so a new plugin kind is one entry.
+ */
+export interface PluginDoc {
+  slug: string;
+  order: string;
+  title: string;
+  blurb: string;
+}
+
+export const pluginDocs: PluginDoc[] = [
+  {
+    slug: '',
+    order: '00',
+    title: 'Plugin overview',
+    blurb: 'The five contracts, the load/row/tick chain, registration order and the time model.',
+  },
+  {
+    slug: 'format',
+    order: '01',
+    title: 'Format plugin',
+    blurb: 'Parse bytes into ModuleData and apply one pattern cell per channel per row.',
+  },
+  {
+    slug: 'effect',
+    order: '02',
+    title: 'Effect plugin',
+    blurb: 'Row and tick hooks that see every channel after the format reader.',
+  },
+  {
+    slug: 'dsp',
+    order: '03',
+    title: 'DSP plugin',
+    blurb: 'Turn the core voice state into interleaved stereo for one tick per call.',
+  },
+  {
+    slug: 'output',
+    order: '04',
+    title: 'Output plugin',
+    blurb: 'Pull audio with playBuffer and decide when the sink can take more.',
+  },
+  {
+    slug: 'export',
+    order: '05',
+    title: 'Export plugin',
+    blurb: 'Serialize a ModuleData back to a file; the write side of a format loader.',
+  },
 ];

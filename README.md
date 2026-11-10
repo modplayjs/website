@@ -99,9 +99,10 @@ chrome --headless --window-size=1200,630 --allow-file-access-from-files \
   four destinations and the same footer.
 - **Type:** Silkscreen for the wordmark, Archivo for text, IBM Plex Mono for
   data and labels. Fonts are bundled via Fontsource, not fetched at runtime.
-- **Colour:** a DaisyUI theme named `modplay` in `src/styles/global.css`,
-  derived from the app's own palette. Components come from DaisyUI; the page
-  uses its classes rather than a second CSS layer.
+- **Colour:** the DaisyUI built-in `dark` theme, the same one the playground
+  (`apps/demo`) uses. The pattern-view palette (`--pat-*`) is copied from the
+  playground too, so the tracker grids match exactly. Components come from
+  DaisyUI; the page uses its classes rather than a second CSS layer.
 - **Custom CSS:** two rules — the faint tracker-grid lines behind the page and
   the hatching on disabled download buttons. Everything else is utilities.
 - **No client JavaScript**, no analytics, no external requests.

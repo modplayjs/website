@@ -1,0 +1,189 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Section from '../../../components/Section.astro';
+import CodeBlock from '../../../components/CodeBlock.astro';
+import DocTable from '../../../components/DocTable.astro';
+import DocNote from '../../../components/DocNote.astro';
+import { pluginDocs } from '../../../data/site';
+
+const index = pluginDocs.findIndex((doc) => doc.slug === 'output');
+const prev = pluginDocs[index - 1]!;
+const next = pluginDocs[index + 1]!;
+---
+
+<Base
+  title="Output plugin API — modplayjs"
+  description="The OutputPlugin contract: start/stop, the exact playBuffer return and loop semantics, sizing and pacing, with a capture example."
+  layout="docs"
+>
+  <div class="breadcrumbs py-0 font-mono text-[0.64rem] text-base-content/30">
+    <ul>
+      <li><a href="/api" class="hover:text-primary">Library API</a></li>
+      <li><a href="/api/plugins" class="hover:text-primary">Plugin authoring</a></li>
+      <li class="text-base-content/50">Output</li>
+    </ul>
+  </div>
+
+  <header class="mt-3 border-b border-base-300 pb-8">
+    <p class="font-mono text-[0.64rem] uppercase tracking-[0.2em] text-base-content/35">
+      Plugin authoring / 04
+    </p>
+    <h1 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Output plugin</h1>
+    <p class="mt-4 max-w-[66ch] text-[0.96rem] leading-relaxed text-base-content/65">
+      Outputs pull. The core never pushes: an output decides when its sink can take more and calls
+      <span class="font-mono text-[0.86rem]">core.playBuffer</span>. That clock is what keeps the song position aligned
+      with what the listener hears.
+    </p>
+  </header>
+
+  <Section index="01" title="The interface" note="started by the app">
+    <CodeBlock
+      title="OutputPlugin"
+      code={`import type { Core } from '@modplayjs/core';
+
+interface OutputPlugin {
+  readonly name: string;
+
+  /** Begin output. The host app calls this; the core does not. */
+  start(core: Core): void;
+
+  /** Stop output and release the device. */
+  stop(): void;
+}`}
+    />
+    <p class="mt-3 max-w-[74ch] text-[0.86rem] leading-relaxed text-base-content/55">
+      Registering an output does not start it. The demo starts the WebAudio output from a click handler (the browser
+      gesture requirement); an offline writer starts and drains synchronously.
+    </p>
+    <CodeBlock
+      title="Register and start"
+      code={`import { createPcmOutput } from '@modplayjs/out-pcm';
+
+const output = createPcmOutput();
+core.registries.registerOutput(output);
+output.start(core);   // after core.startPlayer()`}
+    />
+  </Section>
+
+  <Section index="02" title="playBuffer, exactly" note="the part that trips people up">
+    <CodeBlock
+      title="core.playBuffer"
+      lang="TypeScript"
+      code={`playBuffer(out: Float32Array, size: number, loop = 1): number`}
+    />
+    <DocTable
+      columns={['Return', 'Meaning']}
+      rows={[
+        ['> 0', 'Number of interleaved floats written. Normally equals size when a whole buffer was available.'],
+        ['0', 'The song ended while this buffer was being filled. The audio already written is valid; the rest of the buffer is zero-filled. Stop after this call.'],
+        ['- 1', 'The song was already ended when the call started. Nothing was written. This is the definitive end signal.'],
+      ]}
+    />
+    <DocTable
+      columns={['loop', 'Behaviour']}
+      rows={[
+        ['1 (default)', 'Play the module once. The core stops when loop_count reaches 1.'],
+        ['n > 0', 'Play up to n loops, then stop.'],
+        ['0', 'Ignore the loop count: play forever (the endless path).'],
+      ]}
+    />
+    <DocNote tone="warn">
+      <span class="font-mono text-[0.8rem]">0</span> and <span class="font-mono text-[0.8rem]">-1</span> are different
+      end signals. Treating <span class="font-mono text-[0.8rem]">0</span> as “nothing was written” drops the final
+      partial buffer; treating <span class="font-mono text-[0.8rem]">-1</span> as “keep pulling” spins forever.
+    </DocNote>
+  </Section>
+
+  <Section index="03" title="Sizing and pacing" note="whole ticks only">
+    <ul class="max-w-[74ch] space-y-2 text-[0.88rem] leading-relaxed text-base-content/60">
+      <li>
+        <span class="font-mono text-[0.8rem]">playBuffer</span> copies whole ticks. The buffer must hold at least
+        <span class="font-mono text-[0.8rem]">ticksize × 2</span> floats or it cannot make progress; a partial tick is
+        carried into the next call, not dropped.
+      </li>
+      <li>
+        <span class="font-mono text-[0.8rem]">ticksize</span> changes with BPM. Size for at least four ticks of headroom,
+        e.g. <span class="font-mono text-[0.8rem]">new Float32Array(core.ticksize * 2 * 4)</span>.
+      </li>
+      <li>
+        In a real-time sink, pull only when the device buffer is below its high-water mark. The core’s song clock
+        advances when audio is pulled, so pulling ahead is what makes a pattern view run ahead of what is audible.
+      </li>
+      <li>
+        Do not call <span class="font-mono text-[0.8rem]">playBuffer</span> from two threads for the same core.
+      </li>
+    </ul>
+  </Section>
+
+  <Section index="04" title="Example: capture to memory" note="offline">
+    <p class="max-w-[74ch] text-[0.9rem] leading-relaxed text-base-content/60">
+      An offline writer can drain the module synchronously. This keeps the partial tail that
+      <span class="font-mono text-[0.8rem]">0</span> reports and stops on <span class="font-mono text-[0.8rem]">-1</span>.
+    </p>
+    <CodeBlock
+      title="capture.ts"
+      code={`import type { Core, OutputPlugin } from '@modplayjs/core';
+
+export function createCaptureOutput() {
+  const chunks: Float32Array[] = [];
+  const output: OutputPlugin & { pcm(): Float32Array } = {
+    name: 'capture',
+    start(core) {
+      const scratch = new Float32Array(core.ticksize * 2 * 4);
+      for (;;) {
+        const n = core.playBuffer(scratch, scratch.length, 1);
+        if (n < 0) break;                 // already ended, nothing written
+        if (n === 0) {                    // ended during this buffer
+          chunks.push(scratch.slice());   // valid audio + zero tail
+          break;
+        }
+        chunks.push(scratch.slice(0, n));
+      }
+    },
+    stop() {},
+    pcm() {
+      const total = chunks.reduce((n, c) => n + c.length, 0);
+      const out = new Float32Array(total);
+      let o = 0;
+      for (const c of chunks) { out.set(c, o); o += c.length; }
+      return out;
+    },
+  };
+  return output;
+}`}
+    />
+    <p class="mt-3 max-w-[74ch] text-[0.86rem] leading-relaxed text-base-content/55">
+      <span class="font-mono text-[0.8rem]">@modplayjs/out-pcm</span> is the fuller version: tick-accurate offline
+      render plus a 16-bit stereo RIFF/WAVE encoder.
+    </p>
+  </Section>
+
+  <Section index="05" title="Real-time and the browser" note="pull when the sink is hungry">
+    <p class="max-w-[74ch] text-[0.9rem] leading-relaxed text-base-content/60">
+      A device output owns a ring or a FIFO. Pull when its fill drops below the high-water mark, write what the device
+      can take, and let the device clock do the pacing. Never busy-loop <span class="font-mono text-[0.8rem]">playBuffer</span>
+      on the main thread in a real-time app; the render-ahead will run away from the audible position.
+    </p>
+    <p class="mt-3 max-w-[74ch] text-[0.9rem] leading-relaxed text-base-content/60">
+      <span class="font-mono text-[0.8rem]">@modplayjs/out-webaudio</span> implements two transports: a
+      SharedArrayBuffer ring when <span class="font-mono text-[0.8rem]">crossOriginIsolated</span>, and a transferable
+      copy mode otherwise. Its <span class="font-mono text-[0.8rem]">start(core, workletUrl)</span> takes an extra
+      argument, and it adds <span class="font-mono text-[0.8rem]">pause()</span>,
+      <span class="font-mono text-[0.8rem]">resume()</span> and <span class="font-mono text-[0.8rem]">onEnded</span>;
+      those are extensions to this contract, not part of it.
+    </p>
+    <DocNote>
+      The output plugin is the only place that decides when audio is rendered. If playback “runs fast” or a pattern
+      view is ahead of the sound, the pull pacing is the first thing to check — not the DSP.
+    </DocNote>
+  </Section>
+
+  <nav class="mt-16 flex items-center justify-between gap-4 border-t border-base-300 pt-5">
+    <a href={`/api/plugins/${prev.slug}`} class="font-mono text-[0.66rem] uppercase tracking-[0.14em] text-base-content/35 hover:text-primary">
+      ← {prev.title}
+    </a>
+    <a href={`/api/plugins/${next.slug}`} class="text-right font-mono text-[0.66rem] uppercase tracking-[0.14em] text-base-content/50 hover:text-primary">
+      {next.order} · {next.title} →
+    </a>
+  </nav>
+</Base>

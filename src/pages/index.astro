@@ -126,11 +126,11 @@ const playingRow = '06';
                     class:list={[
                       'grid grid-cols-[1.6rem_repeat(3,minmax(0,1fr))] gap-x-3 py-[1px] font-mono text-[0.62rem] leading-[1.55] sm:grid-cols-[1.6rem_repeat(4,minmax(0,1fr))] sm:text-[0.64rem] lg:text-[0.7rem]',
                       row.n === playingRow
-                        ? 'bg-base-300/60 text-base-content shadow-[inset_2px_0_0_var(--color-primary)]'
+                        ? 'bg-[var(--pat-row-active)] text-[var(--pat-active-text)] shadow-[inset_2px_0_0_var(--pat-accent)]'
                         : 'text-base-content/35',
                     ]}
                   >
-                    <span class:list={[row.n === playingRow ? 'text-primary' : 'text-base-content/20']}>
+                    <span class:list={[row.n === playingRow ? 'text-[var(--pat-rownum)]' : 'text-base-content/20']}>
                       {row.n}
                     </span>
                     {row.cells.map((cell, channel) => (
@@ -140,10 +140,10 @@ const playingRow = '06';
                           channel === 3 ? 'hidden sm:flex' : 'flex',
                         ]}
                       >
-                        <span class="text-info">{cell[0]}</span>
-                        <span class="text-success/80">{cell[1]}</span>
-                        <span class="text-warning/80">{cell[2]}</span>
-                        <span class="text-secondary/80">{cell[3]}</span>
+                        <span class="text-[var(--pat-note)]">{cell[0]}</span>
+                        <span class="text-[var(--pat-ins)]">{cell[1]}</span>
+                        <span class="text-[var(--pat-vol)]">{cell[2]}</span>
+                        <span class="text-[var(--pat-fx)]">{cell[3]}</span>
                       </span>
                     ))}
                   </div>

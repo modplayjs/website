@@ -1,0 +1,324 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Section from '../../../components/Section.astro';
+import CodeBlock from '../../../components/CodeBlock.astro';
+import DocTable from '../../../components/DocTable.astro';
+import DocNote from '../../../components/DocNote.astro';
+import { pluginDocs } from '../../../data/site';
+
+const index = pluginDocs.findIndex((doc) => doc.slug === 'format');
+const prev = pluginDocs[index - 1]!;
+const next = pluginDocs[index + 1]!;
+---
+
+<Base
+  title="Format plugin API — modplayjs"
+  description="The FormatPlugin contract: signature probing, ModuleData, sample registration, quirks and the per-row event reader, with a complete minimal loader."
+  layout="docs"
+>
+  <div class="breadcrumbs py-0 font-mono text-[0.64rem] text-base-content/30">
+    <ul>
+      <li><a href="/api" class="hover:text-primary">Library API</a></li>
+      <li><a href="/api/plugins" class="hover:text-primary">Plugin authoring</a></li>
+      <li class="text-base-content/50">Format</li>
+    </ul>
+  </div>
+
+  <header class="mt-3 border-b border-base-300 pb-8">
+    <p class="font-mono text-[0.64rem] uppercase tracking-[0.2em] text-base-content/35">
+      Plugin authoring / 01
+    </p>
+    <h1 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Format plugin</h1>
+    <p class="mt-4 max-w-[66ch] text-[0.96rem] leading-relaxed text-base-content/65">
+      A format plugin does two things: turn a file into the core’s normalized
+      <span class="font-mono text-[0.86rem]">ModuleData</span>, and apply one pattern cell to one channel on every row.
+      The shared player, effect processors and mixers do the rest.
+    </p>
+  </header>
+
+  <Section index="01" title="The interface" note="three methods">
+    <CodeBlock
+      title="FormatPlugin"
+      code={`import type { Core, LoadCtx, ModuleData } from '@modplayjs/core';
+
+interface FormatPlugin {
+  /** Name used by core.format(name); also the key in ModuleData.format. */
+  readonly name: string;
+
+  /** True if these bytes are this format. Cheap, definitive, never throws. */
+  test(bytes: Uint8Array): boolean;
+
+  /** Parse the file once. Throw ParseError on malformed input. */
+  load(bytes: Uint8Array, ctx: LoadCtx): ModuleData;
+
+  /** Apply one event cell (chn, row) to channel state. Runs per row. */
+  readEvent(core: Core, chn: number, row: number): void;
+}`}
+    />
+    <p class="mt-3 max-w-[74ch] text-[0.86rem] leading-relaxed text-base-content/55">
+      Registration is one call. The first registered plugin whose
+      <span class="font-mono text-[0.8rem]">test()</span> accepts the bytes wins,
+      so put exact signatures before broad family probes.
+    </p>
+    <CodeBlock
+      title="Register"
+      code={`import { plugin as toy } from './toy.js';
+
+core.registries.registerFormat(toy);
+core.loadModule(bytes);   // probes registered formats in order`}
+    />
+  </Section>
+
+  <Section index="02" title="load(): the normalized module" note="what you must fill">
+    <p class="max-w-[74ch] text-[0.9rem] leading-relaxed text-base-content/60">
+      <span class="font-mono text-[0.8rem]">load()</span> runs once per file. It receives the file bytes and a
+      <span class="font-mono text-[0.8rem]">LoadCtx</span>, and returns a complete
+      <span class="font-mono text-[0.8rem]">ModuleData</span>. The core clears the sample store first, so every file
+      starts at sample id 0.
+    </p>
+    <DocTable
+      columns={['LoadCtx field', 'Meaning']}
+      rows={[
+        ['sampleRate', 'The rate the core will render at. A loader rarely needs it, but it is the truth for rate conversion at load time.'],
+        ['outputRate', 'Output hint, same value as sampleRate in the current API.'],
+        ['addSample(raw)', 'Register one raw sample; returns its positional id. Call it for every declared slot, including empty ones, so ids match the format’s own numbering.'],
+        ['sidecarNt?', 'Startrekker AM synth sidecar (.NT/.AS) for FLT4/8, when the host supplied one.'],
+        ['externalInstrument?', 'Resolver for formats that reference sample files by instrument name (MED). Returns bytes or null.'],
+      ]}
+    />
+    <DocTable
+      columns={['ModuleData field', 'What it is']}
+      rows={[
+        ['title, comment, tracker', 'Display strings. The core trims trailing spaces and replaces control characters.'],
+        ['format', 'The plugin name. The core re-enters the registry with this string on every row.'],
+        ['chn, pat, ins, len, restart', 'Channel, pattern, instrument and order counts; restart order.'],
+        ['xxo', 'Order table, len entries, each an index into patterns[].'],
+        ['channels', 'One { pan, vol, flg } per channel. pan is 0x00…0xff, 0x80 centre.'],
+        ['patterns', 'Pattern[]: each { rows, tracks }, one Track per channel, one Event per row.'],
+        ['instruments', '1-indexed access: instruments[0] is instrument 1. Needs sub[121], map[121], mapXpo[121] and three envelopes.'],
+        ['samples', 'RawSample[] for export/UI. If addSample already registered them, leave this empty and the core will not re-add.'],
+        ['speed, bpm, volbase, gvolbase, gvol', 'Initial timing and volume bases. speed 6 / bpm 125 / volbase 64 for MOD-style.'],
+        ['quirks, flowMode, readEventType, periodType', 'Which shared player semantics the reader implements; see the table below.'],
+        ['defpan, time_factor, rrate, c4rate', 'Default pan, time factor (10), replay rate (250), C-4 rate (8287 PAL / 8363 NTSC).'],
+        ['midi?, mvol?, mvolbase?, endless?, extras?', 'IT MIDI macros, IT master volume, endless engines and format extras. Optional.'],
+      ]}
+    />
+    <DocNote tone="warn">
+      Sample ids are positional, not content-derived. A voice stores <span class="font-mono text-[0.8rem]">smp</span> and
+      resolves it through the store; if you skip an empty slot, every following instrument plays the wrong sample.
+    </DocNote>
+  </Section>
+
+  <Section index="03" title="RawSample and Event" note="the two cell types">
+    <CodeBlock
+      title="RawSample"
+      code={`interface RawSample {
+  name?: string;
+  /** Undecoded bytes; the store normalizes to float. */
+  data: Uint8Array;
+  /** Length in samples (frames per channel for stereo). */
+  length: number;
+  loopStart: number; loopEnd: number;
+  sustainStart: number; sustainEnd: number;
+  finetune: number; volume: number;
+  /** LOOP | BIDIR | 16BIT | STEREO | UNSIGNED | DIFF | ADPCM | 7BIT | BIGEND | INTERLEAVED */
+  flags: SampleFlags;
+  /** C-5 rate in Hz; defaults to ModuleData.c4rate. */
+  c5spd?: number;
+}`}
+    />
+    <CodeBlock
+      title="Event, Track, Pattern"
+      code={`interface Event {
+  note: number;   // 0 = no note; key-off/cut/fade markers allowed
+  ins: number;    // 0 = no change
+  vol: number;    // 0 = no change, 1..basevol
+  fxt: number; fxp: number;    // primary effect
+  f2t: number; f2p: number;    // secondary effect (XM volume column)
+}
+
+interface Track { rows: number; event: Event[]; }
+interface Pattern { rows: number; tracks: Track[]; }`}
+    />
+  </Section>
+
+  <Section index="04" title="readEvent(): one cell, every row" note="use the scratch reader">
+    <p class="max-w-[74ch] text-[0.9rem] leading-relaxed text-base-content/60">
+      The core calls <span class="font-mono text-[0.8rem]">readEvent(core, chn, row)</span> for every channel on every row.
+      It does not pass the event, because the same reader also receives delayed and injected events. Always fetch the
+      cell through these two accessors, in this order:
+    </p>
+    <CodeBlock
+      title="readEvent skeleton"
+      code={`readEvent(core, chn, row) {
+  const mod = core.module!;
+  const e =
+    core.readEventScratch(chn) ??
+    core.readEventAt(mod.xxo[core.ctx.p.ord] ?? 0, chn, row);
+
+  // Translate e into channel state / shared processors:
+  //   note, instrument, volume, effect arms, flow hooks.
+  readEventMod(core, e, chn);   // if your events are MOD-family
+}`}
+    />
+    <p class="mt-3 max-w-[74ch] text-[0.86rem] leading-relaxed text-base-content/55">
+      <span class="font-mono text-[0.8rem]">readEventScratch</span> is the delayed/injected event, when one exists for
+      this channel. <span class="font-mono text-[0.8rem]">readEventAt</span> reads the pattern cell at the current order.
+      A reader that walks <span class="font-mono text-[0.8rem]">mod.patterns</span> directly will drop EDx-delayed events
+      and the IT/MPT note-delay path.
+    </p>
+    <DocTable
+      columns={['Family', 'Shared reader', 'Import']}
+      rows={[
+        ['MOD / ProTracker', 'readEventMod(core, e, chn)', '@modplayjs/fmt-mod'],
+        ['Scream Tracker 3', 'readEventSt3(core, e, chn)', '@modplayjs/core'],
+        ['FastTracker II', 'readEventFt2(core, e, chn)', '@modplayjs/core'],
+        ['Impulse Tracker', 'readEventIt(core, e, chn)', '@modplayjs/core'],
+      ]}
+    />
+  </Section>
+
+  <Section index="05" title="A complete minimal loader" note="toy format, real code">
+    <p class="max-w-[74ch] text-[0.9rem] leading-relaxed text-base-content/60">
+      This is a full plugin for a made-up format. The file is
+      <span class="font-mono text-[0.8rem]">"TOY1"</span>, one byte of channel count, one byte of rows, a little-endian
+      sample length, signed 8-bit PCM, then one 5-byte cell per channel per row (note, instrument, volume, effect,
+      parameter), channel-major. It reuses the MOD reader, so the effect semantics are ProTracker’s.
+    </p>
+    <CodeBlock
+      title="toy.ts"
+      code={`import {
+  type Envelope, type Event, type FormatPlugin, type Instrument,
+  type ModuleData, type SubInstrument, type Track,
+  C4_PAL_RATE, FLOW_MODE_GENERIC, PeriodType, ReadEventType,
+} from '@modplayjs/core';
+import { readEventMod } from '@modplayjs/fmt-mod';
+
+const MAGIC = [0x54, 0x4f, 0x59, 0x31]; // "TOY1"
+
+const emptyEnv = (): Envelope => ({
+  flags: 0, npt: 0, scl: 0, sus: 0, sue: 0, lps: 0, lpe: 0, x: [], y: [],
+});
+
+const sub = (sid: number): SubInstrument => ({
+  vol: 64, gvl: 0, pan: -1, xpo: 0, fin: 0, vwf: 0, vde: 0, vra: 0, vsw: 0,
+  sid, nna: 0, dct: 0, dca: 0, ifc: 0, ifr: 0, rvv: 0,
+});
+
+const instrument = (name: string, sid: number): Instrument => ({
+  name, volume: 64, nsm: 1, rls: 0,
+  map: Array(121).fill(0),
+  mapXpo: Array(121).fill(0),
+  sub: Array.from({ length: 121 }, () => sub(sid)),
+  aei: emptyEnv(), fei: emptyEnv(), pei: emptyEnv(),
+});
+
+export const toy: FormatPlugin = {
+  name: 'toy',
+
+  test(bytes) {
+    return bytes.length >= 10 && MAGIC.every((b, i) => bytes[i] === b);
+  },
+
+  load(bytes, ctx) {
+    let o = 4;
+    const chn = bytes[o++] ?? 4;
+    const rows = bytes[o++] || 64;
+    const sampleLen = (bytes[o] ?? 0) | ((bytes[o + 1] ?? 0) << 8);
+    o += 2;
+    const pcm = bytes.subarray(o, o + sampleLen);
+    o += sampleLen;
+
+    // Positional id: the store assigns 0, 1, 2, …
+    const sid = ctx.addSample({
+      name: 'toy', data: pcm, length: pcm.length,
+      loopStart: 0, loopEnd: 0, sustainStart: 0, sustainEnd: 0,
+      finetune: 0, volume: 64, flags: 0,
+    });
+
+    const tracks: Track[] = [];
+    for (let ch = 0; ch < chn; ch++) {
+      const event: Event[] = [];
+      for (let row = 0; row < rows; row++) {
+        const note = bytes[o++] ?? 0;
+        const ins = bytes[o++] ?? 0;
+        const vol = bytes[o++] ?? 0;
+        const fxt = bytes[o++] ?? 0;
+        const fxp = bytes[o++] ?? 0;
+        event.push({ note, ins, vol, fxt, fxp, f2t: 0, f2p: 0 });
+      }
+      tracks.push({ rows, event });
+    }
+
+    return {
+      title: 'toy',
+      format: 'toy',                 // must equal the plugin name
+      comment: '',
+      chn, pat: 1, ins: 1, len: 1, restart: 0,
+      xxo: [0],
+      channels: Array.from({ length: chn }, (_, i) => ({
+        pan: i % 2 === 0 ? 0x30 : 0xd0, vol: 0x40, flg: 0,
+      })),
+      patterns: [{ rows, tracks }],
+      instruments: [instrument('toy', sid)],
+      samples: [],                   // addSample already registered it
+      num_sequences: 1, sequences: [],
+      speed: 6, bpm: 125, volbase: 64, gvolbase: 128, gvol: 64,
+      quirks: 0, flowMode: FLOW_MODE_GENERIC,
+      readEventType: ReadEventType.MOD,
+      periodType: PeriodType.AMIGA,
+      defpan: 0x80, time_factor: 10, rrate: 250, c4rate: C4_PAL_RATE,
+      tracker: 'toy',
+    } satisfies ModuleData;
+  },
+
+  readEvent(core, chn, row) {
+    const mod = core.module!;
+    const e =
+      core.readEventScratch(chn) ??
+      core.readEventAt(mod.xxo[core.ctx.p.ord] ?? 0, chn, row);
+    readEventMod(core, e, chn);
+  },
+};`}
+    />
+    <DocNote>
+      The core does not validate your header. Throw <span class="font-mono text-[0.8rem]">ParseError</span> for a bad
+      signature after <span class="font-mono text-[0.8rem]">test()</span> accepts, truncation, or out-of-range counts;
+      that is what makes a corrupt file a load failure instead of a crash on the first row.
+    </DocNote>
+  </Section>
+
+  <Section index="06" title="Quirks decide the personality" note="shared code branches on them">
+    <p class="max-w-[74ch] text-[0.9rem] leading-relaxed text-base-content/60">
+      Two loaders can emit the same events and still behave differently, because the shared player branches on the
+      module’s quirk set, flow mode, reader family and period semantics. Set the same values the reference loader for
+      your format sets:
+    </p>
+    <DocTable
+      columns={['Field', 'What it changes']}
+      rows={[
+        ['quirks', 'ProTracker one-shot/end-of-sample reset, ST3 volume-slide direction, FT2 pan/volume behaviour, IT envelopes/NNA/delay. The QUIRKS_* constants are exported.'],
+        ['flowMode', 'Pattern loop/jump/break edge cases (FLOW_MODE_*). Generic is correct for a clean format.'],
+        ['readEventType', 'Which shared reader semantics your readEvent implements: MOD, FT2, ST3, IT or MED.'],
+        ['periodType', 'Amiga period range, linear period, or CSPD pitch. Pick the one your note values mean.'],
+        ['c4rate', 'The period-to-rate reference: 8287 PAL, 8363 NTSC.'],
+        ['time_factor, rrate', 'The tick formula constants. Leave at 10 / 250 unless the format’s timing is not BPM-based.'],
+      ]}
+    />
+    <p class="mt-3 max-w-[74ch] text-[0.86rem] leading-relaxed text-base-content/55">
+      The shipped loaders are the reference for these values: <span class="font-mono text-[0.8rem]">fmt-mod</span> for
+      the ProTracker family, <span class="font-mono text-[0.8rem]">fmt-s3m</span> for ST3,
+      <span class="font-mono text-[0.8rem]">fmt-xm</span> for FT2 and <span class="font-mono text-[0.8rem]">fmt-it</span>
+      for IT.
+    </p>
+  </Section>
+
+  <nav class="mt-16 flex items-center justify-between gap-4 border-t border-base-300 pt-5">
+    <a href={`/api/plugins/${prev.slug}`} class="font-mono text-[0.66rem] uppercase tracking-[0.14em] text-base-content/35 hover:text-primary">
+      ← {prev.title}
+    </a>
+    <a href={`/api/plugins/${next.slug}`} class="text-right font-mono text-[0.66rem] uppercase tracking-[0.14em] text-base-content/50 hover:text-primary">
+      {next.order} · {next.title} →
+    </a>
+  </nav>
+</Base>

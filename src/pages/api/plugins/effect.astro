@@ -1,0 +1,128 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Section from '../../../components/Section.astro';
+import CodeBlock from '../../../components/CodeBlock.astro';
+import DocTable from '../../../components/DocTable.astro';
+import DocNote from '../../../components/DocNote.astro';
+import { pluginDocs } from '../../../data/site';
+
+const index = pluginDocs.findIndex((doc) => doc.slug === 'effect');
+const prev = pluginDocs[index - 1]!;
+const next = pluginDocs[index + 1]!;
+---
+
+<Base
+  title="Effect plugin API — modplayjs"
+  description="The EffectPlugin contract: onRow, onTick and onTickPost hooks, dispatch order and a channel meter example."
+  layout="docs"
+>
+  <div class="breadcrumbs py-0 font-mono text-[0.64rem] text-base-content/30">
+    <ul>
+      <li><a href="/api" class="hover:text-primary">Library API</a></li>
+      <li><a href="/api/plugins" class="hover:text-primary">Plugin authoring</a></li>
+      <li class="text-base-content/50">Effect</li>
+    </ul>
+  </div>
+
+  <header class="mt-3 border-b border-base-300 pb-8">
+    <p class="font-mono text-[0.64rem] uppercase tracking-[0.2em] text-base-content/35">
+      Plugin authoring / 02
+    </p>
+    <h1 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Effect plugin</h1>
+    <p class="mt-4 max-w-[66ch] text-[0.96rem] leading-relaxed text-base-content/65">
+      An effect plugin is a hook into the channel pipeline, not a tracker effect. It sees every channel after the format
+      reader has run, so it is the right place for meters, MIDI output, visual state and cross-cutting processing.
+    </p>
+  </header>
+
+  <Section index="01" title="The interface" note="all hooks optional">
+    <CodeBlock
+      title="EffectPlugin"
+      code={`import type { Core, Event } from '@modplayjs/core';
+
+interface EffectPlugin {
+  readonly name: string;
+
+  /** Tick 0 of every row, after the format reader, for each channel. */
+  onRow?(core: Core, chn: number, ev: Event): void;
+
+  /** Every tick, for each channel. */
+  onTick?(core: Core, chn: number): void;
+
+  /** After processTick (envelopes, volume, frequency), before the mixer. */
+  onTickPost?(core: Core, chn: number): void;
+}`}
+    />
+    <DocTable
+      columns={['Hook', 'When', 'Use it for']}
+      rows={[
+        ['onRow', 'Tick 0, after format.readEvent and before the DSP’s onRow; once per channel, in channel order', 'Note-triggered work, MIDI note-on, event capture'],
+        ['onTick', 'Every tick, for every channel', 'Slides, LFOs and anything that must advance with the tick clock'],
+        ['onTickPost', 'After the core has applied envelopes/volume/frequency for the tick', 'Meters and telemetry that need the final value the mixer will see'],
+      ]}
+    />
+  </Section>
+
+  <Section index="02" title="Dispatch order" note="registration order">
+    <p class="max-w-[74ch] text-[0.9rem] leading-relaxed text-base-content/60">
+      Effects run in registration order. A row’s order is: the format reader, then every effect’s
+      <span class="font-mono text-[0.8rem]">onRow</span>, then every DSP’s
+      <span class="font-mono text-[0.8rem]">onRow</span>. After the row’s ticks are processed, the core calls
+      <span class="font-mono text-[0.8rem]">onTickPost</span> for each channel before rendering the tick.
+    </p>
+    <CodeBlock
+      title="Register"
+      code={`core.registries.registerEffect(meter);
+// names are unique per kind; a duplicate throws PluginNotFoundError`}
+    />
+  </Section>
+
+  <Section index="03" title="Example: a channel meter" note="read-only">
+    <p class="max-w-[74ch] text-[0.9rem] leading-relaxed text-base-content/60">
+      The pattern view needs the volume the mixer will actually use, which is only final after
+      <span class="font-mono text-[0.8rem]">processTick</span>. <span class="font-mono text-[0.8rem]">onTickPost</span>
+      is that point. This plugin never mutates channel state.
+    </p>
+    <CodeBlock
+      title="meter.ts"
+      code={`import type { EffectPlugin } from '@modplayjs/core';
+
+/** One 0..1 value per channel, for a UI or a visualizer. */
+export const levels: number[] = [];
+
+export const meter: EffectPlugin = {
+  name: 'meter',
+
+  onTickPost(core, chn) {
+    const xc = core.channelStates[chn];
+    const volbase = core.module?.volbase ?? 64;
+    if (!xc || volbase <= 0) return;
+    levels[chn] = Math.max(0, Math.min(1, xc.volume / volbase));
+  },
+};`}
+    />
+    <DocNote tone="warn">
+      Effects are not a second format reader. Format-specific effect decoding belongs in the format plugin’s
+      <span class="font-mono text-[0.8rem]">readEvent</span>; an effect plugin that rewrites channel state will fight the
+      reader and the player’s parity guarantees.
+    </DocNote>
+  </Section>
+
+  <Section index="04" title="Rules" note="keep it out of the hot path">
+    <ul class="max-w-[74ch] space-y-2 text-[0.88rem] leading-relaxed text-base-content/60">
+      <li>No rendering. Effects run inside the player tick, not inside the DSP’s sample loop.</li>
+      <li>Read state freely; write it only when the plugin’s purpose is processing (a filter, a humanizer).</li>
+      <li>Do not allocate per sample. Per row or per tick is fine; the core itself avoids allocation in the tick path.</li>
+      <li>Registration is global and permanent for the core instance; there is no unregister hook.</li>
+    </ul>
+  </Section>
+
+  <nav class="mt-16 flex items-center justify-between gap-4 border-t border-base-300 pt-5">
+    <a href={`/api/plugins/${prev.slug}`} class="font-mono text-[0.66rem] uppercase tracking-[0.14em] text-base-content/35 hover:text-primary">
+      ← {prev.title}
+    </a>
+    <a href={`/api/plugins/${next.slug}`} class="text-right font-mono text-[0.66rem] uppercase tracking-[0.14em] text-base-content/50 hover:text-primary">
+      {next.order} · {next.title} →
+    </a>
+  </nav>
+</Base>

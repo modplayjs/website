@@ -1,0 +1,16 @@
+---
+interface Props {
+  tone?: 'info' | 'warn';
+}
+
+const { tone = 'info' } = Astro.props;
+---
+
+<div
+  class:list={[
+    'mt-4 border-l-2 pl-4 text-[0.84rem] leading-relaxed',
+    tone === 'warn' ? 'border-warning/70 text-warning/90' : 'border-primary/60 text-base-content/60',
+  ]}
+>
+  <slot />
+</div>

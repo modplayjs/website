@@ -1,0 +1,44 @@
+---
+interface Props {
+  columns: string[];
+  rows: (string | number)[][];
+  /** Column indexes rendered in the mono face. Defaults to the first. */
+  mono?: number[];
+}
+
+const { columns, rows, mono = [0] } = Astro.props;
+---
+
+<div class="mt-4 overflow-x-auto border border-base-300">
+  <table class="w-full border-collapse text-left">
+    <thead>
+      <tr class="border-b border-base-300 bg-base-200/40">
+        {
+          columns.map((column) => (
+            <th class="px-3 py-2 font-mono text-[0.6rem] font-normal uppercase tracking-[0.14em] text-base-content/35">
+              {column}
+            </th>
+          ))
+        }
+      </tr>
+    </thead>
+    <tbody>
+      {
+        rows.map((row) => (
+          <tr class="border-b border-base-300/60 last:border-0">
+            {row.map((cell, index) => (
+              <td
+                class:list={[
+                  'px-3 py-2 align-top text-[0.8rem] leading-relaxed text-base-content/60',
+                  mono.includes(index) && 'font-mono text-[0.72rem] text-base-content/75',
+                ]}
+              >
+                {cell}
+              </td>
+            ))}
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+</div>

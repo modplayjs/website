@@ -1,5 +1,5 @@
 ---
-import { categories } from '../data/site';
+import { categories, pluginDocs } from '../data/site';
 
 interface Props {
   path: string;
@@ -8,6 +8,7 @@ interface Props {
 const { path } = Astro.props;
 const normalized = path.replace(/\/+$/, '') || '/';
 const onOverview = normalized === '/api';
+const onPlugins = normalized === '/api/plugins' || normalized.startsWith('/api/plugins/');
 
 /** Row anchor on the category page, e.g. @modplayjs/fmt-mod -> pkg-fmt-mod. */
 const anchorFor = (name: string) => `pkg-${name.split('/').pop()}`;
@@ -65,5 +66,30 @@ const anchorFor = (name: string) => `pkg-${name.split('/').pop()}`;
         );
       })
     }
+  </div>
+
+  <div class="mt-6 border-t border-base-300 pt-4">
+    <p class="px-2 text-[0.6rem] uppercase tracking-[0.18em] text-base-content/30">Plugin authoring</p>
+    <ul class="mt-2 space-y-0.5 border-l border-base-300 ml-2 pl-2">
+      {
+        pluginDocs.map((doc) => {
+          const active = normalized === `/api/plugins/${doc.slug}` || (doc.slug === '' && normalized === '/api/plugins');
+          return (
+            <li>
+              <a
+                href={doc.slug === '' ? '/api/plugins' : `/api/plugins/${doc.slug}`}
+                aria-current={active ? 'page' : undefined}
+                class:list={[
+                  'block py-1 pr-1 text-[0.68rem]',
+                  active ? 'text-primary' : 'text-base-content/55 hover:text-base-content',
+                ]}
+              >
+                {doc.title}
+              </a>
+            </li>
+          );
+        })
+      }
+    </ul>
   </div>
 </nav>

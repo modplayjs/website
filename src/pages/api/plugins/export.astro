@@ -1,0 +1,148 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Section from '../../../components/Section.astro';
+import CodeBlock from '../../../components/CodeBlock.astro';
+import DocTable from '../../../components/DocTable.astro';
+import DocNote from '../../../components/DocNote.astro';
+import { pluginDocs } from '../../../data/site';
+
+const index = pluginDocs.findIndex((doc) => doc.slug === 'export');
+const prev = pluginDocs[index - 1]!;
+const next = pluginDocs[0]!;
+---
+
+<Base
+  title="Export plugin API — modplayjs"
+  description="The ExportPlugin contract: supports, write, sample bytes and a minimal JSON exporter."
+  layout="docs"
+>
+  <div class="breadcrumbs py-0 font-mono text-[0.64rem] text-base-content/30">
+    <ul>
+      <li><a href="/api" class="hover:text-primary">Library API</a></li>
+      <li><a href="/api/plugins" class="hover:text-primary">Plugin authoring</a></li>
+      <li class="text-base-content/50">Export</li>
+    </ul>
+  </div>
+
+  <header class="mt-3 border-b border-base-300 pb-8">
+    <p class="font-mono text-[0.64rem] uppercase tracking-[0.2em] text-base-content/35">
+      Plugin authoring / 05
+    </p>
+    <h1 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Export plugin</h1>
+    <p class="mt-4 max-w-[66ch] text-[0.96rem] leading-relaxed text-base-content/65">
+      An export plugin is the write side of a format loader: it serializes a
+      <span class="font-mono text-[0.86rem]">ModuleData</span> back into the format’s file bytes. The studio’s export
+      actions are the consumer; the core does not call writers on its own.
+    </p>
+  </header>
+
+  <Section index="01" title="The interface" note="one format per writer">
+    <CodeBlock
+      title="ExportPlugin"
+      code={`import type { ModuleData } from '@modplayjs/core';
+
+interface ExportPlugin {
+  /** Registry key, used by registries.export(name). */
+  readonly name: string;
+
+  /** Human-readable label for a UI picker. */
+  readonly label: string;
+
+  /** File extension without the dot. */
+  readonly extension: string;
+
+  /** Can this writer represent the module? */
+  supports(mod: ModuleData): boolean;
+
+  /** Serialize the module. */
+  write(mod: ModuleData): Uint8Array;
+}`}
+    />
+    <p class="mt-3 max-w-[74ch] text-[0.86rem] leading-relaxed text-base-content/55">
+      Register next to the loader it belongs to. Names are unique per kind; a duplicate throws
+      <span class="font-mono text-[0.8rem]">PluginNotFoundError</span>.
+    </p>
+    <CodeBlock
+      title="Register"
+      code={`core.registries.registerExport(toyExport);
+
+const writer = core.registries.export('toy');
+if (writer.supports(core.module!)) {
+  const bytes = writer.write(core.module!);
+}`}
+    />
+  </Section>
+
+  <Section index="02" title="What write() receives" note="the module, not the mixer">
+    <DocTable
+      columns={['Field', 'What to use it for']}
+      rows={[
+        ['mod.title, mod.tracker, mod.comment', 'Header text. Keep the format’s length limits in mind.'],
+        ['mod.chn, mod.pat, mod.ins, mod.len, mod.restart', 'Counts and the restart order.'],
+        ['mod.xxo', 'Order table; each entry indexes mod.patterns.'],
+        ['mod.patterns', 'Pattern[]. Each Track has one Event per row; write empty cells as the format’s empty encoding.'],
+        ['mod.instruments', 'Instrument definitions: name, sub[121] with sid, vol, pan, xpo, envelopes.'],
+        ['mod.samples', 'RawSample[]. The bytes are in sample.data (Uint8Array), not in the decoded float store.'],
+        ['mod.quirks, readEventType, periodType', 'Reader personality. A writer does not need them unless the file embeds a player mode.'],
+      ]}
+    />
+    <DocNote tone="warn">
+      <span class="font-mono text-[0.8rem]">core.samples</span> holds the decoded float data used by the mixer. A writer
+      must serialize <span class="font-mono text-[0.8rem]">mod.samples[i].data</span>, the original bytes the loader
+      registered, or it will write float data into an 8-bit sample slot.
+    </DocNote>
+  </Section>
+
+  <Section index="03" title="Example: a JSON debug writer" note="useful before the real one">
+    <p class="max-w-[74ch] text-[0.9rem] leading-relaxed text-base-content/60">
+      A debug writer is the shortest useful export: it round-trips the normalized module through JSON so you can diff a
+      loader against the reference. It is also a template for the real thing — same contract, different byte layout.
+    </p>
+    <CodeBlock
+      title="json-export.ts"
+      code={`import type { ExportPlugin, ModuleData } from '@modplayjs/core';
+
+export const jsonExport: ExportPlugin = {
+  name: 'json',
+  label: 'Normalized module (JSON)',
+  extension: 'json',
+
+  supports() {
+    return true;
+  },
+
+  write(mod: ModuleData) {
+    const text = JSON.stringify(
+      mod,
+      (_key, value) => (value instanceof Uint8Array ? Array.from(value) : value),
+      2,
+    );
+    return new TextEncoder().encode(text);
+  },
+};`}
+    />
+    <DocNote>
+      The core uses <span class="font-mono text-[0.8rem]">mod.format</span> to re-enter the reader on every row. A writer
+      that changes the format name must also register a matching reader, or the produced file cannot be loaded back.
+    </DocNote>
+  </Section>
+
+  <Section index="04" title="Rules" note="byte-for-byte">
+    <ul class="max-w-[74ch] space-y-2 text-[0.88rem] leading-relaxed text-base-content/60">
+      <li><span class="font-mono text-[0.8rem]">supports()</span> must be cheap and must not throw for a module from another family.</li>
+      <li>Write exactly the sizes the format declares; do not pad with trailing bytes a loader would reject.</li>
+      <li>Keep sample ids and instrument <span class="font-mono text-[0.8rem]">sub[].sid</span> consistent with the array you write.</li>
+      <li>Endianness and signedness belong to the format. The writer emits the file’s encoding, not the mixer’s float encoding.</li>
+      <li>Exports run on demand, not in the audio path; allocation is fine.</li>
+    </ul>
+  </Section>
+
+  <nav class="mt-16 flex items-center justify-between gap-4 border-t border-base-300 pt-5">
+    <a href={`/api/plugins/${prev.slug}`} class="font-mono text-[0.66rem] uppercase tracking-[0.14em] text-base-content/35 hover:text-primary">
+      ← {prev.title}
+    </a>
+    <a href={`/api/plugins/${next.slug}`} class="text-right font-mono text-[0.66rem] uppercase tracking-[0.14em] text-base-content/50 hover:text-primary">
+      {next.order} · {next.title} →
+    </a>
+  </nav>
+</Base>

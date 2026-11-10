@@ -1,0 +1,22 @@
+---
+interface Props {
+  title?: string;
+  lang?: string;
+  code: string;
+}
+
+const { title, lang = 'TypeScript', code } = Astro.props;
+---
+
+<figure class="mt-4 border border-base-300">
+  <figcaption class="flex items-center justify-between gap-3 border-b border-base-300 px-4 py-2">
+    <span class="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-base-content/40">
+      {title ?? 'Code'}
+    </span>
+    <span class="font-mono text-[0.58rem] uppercase tracking-[0.14em] text-base-content/25">
+      {lang}
+    </span>
+  </figcaption>
+  <pre
+    class="overflow-x-auto bg-base-200/60 p-4 font-mono text-[0.72rem] leading-relaxed text-base-content/70"><code>{code}</code></pre>
+</figure>

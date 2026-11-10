@@ -1,0 +1,164 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Section from '../../../components/Section.astro';
+import CodeBlock from '../../../components/CodeBlock.astro';
+import DocTable from '../../../components/DocTable.astro';
+import DocNote from '../../../components/DocNote.astro';
+import { pluginDocs } from '../../../data/site';
+
+const next = pluginDocs[1];
+---
+
+<Base
+  title="Plugin authoring — modplayjs"
+  description="The five modplayjs plugin contracts, the load/row/tick call chain, registration order and the core time model."
+  layout="docs"
+>
+  <div class="breadcrumbs py-0 font-mono text-[0.64rem] text-base-content/30">
+    <ul>
+      <li><a href="/api" class="hover:text-primary">Library API</a></li>
+      <li class="text-base-content/50">Plugin authoring</li>
+    </ul>
+  </div>
+
+  <header class="mt-3 border-b border-base-300 pb-8">
+    <p class="font-mono text-[0.64rem] uppercase tracking-[0.2em] text-base-content/35">
+      Plugin authoring / 00
+    </p>
+    <h1 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Plugins</h1>
+    <p class="mt-4 max-w-[66ch] text-[0.96rem] leading-relaxed text-base-content/65">
+      Everything outside the core is a plugin. A plugin is a plain object with a
+      <span class="font-mono text-[0.86rem]">name</span> and one of five contracts; you register it, the core calls it.
+      There is no lifecycle wrapper, no decorator and no build step.
+    </p>
+  </header>
+
+  <Section index="01" title="Five contracts" note="one registry each">
+    <DocTable
+      columns={['Kind', 'Contract', 'Register with', 'Chosen by']}
+      rows={[
+        ['Format', 'FormatPlugin', 'registries.registerFormat(p)', 'test() probe order'],
+        ['Effect', 'EffectPlugin', 'registries.registerEffect(p)', 'registration order'],
+        ['DSP', 'DspPlugin', 'registries.registerDsp(p)', 'core.setDsp(name)'],
+        ['Output', 'OutputPlugin', 'registries.registerOutput(p)', 'the host app'],
+        ['Export', 'ExportPlugin', 'registries.registerExport(p)', 'the studio / UI'],
+      ]}
+    />
+    <p class="mt-3 max-w-[74ch] text-[0.86rem] leading-relaxed text-base-content/55">
+      A format plugin and a DSP are the two you need for playback. Effects are optional observers that see every
+      channel after the format reader. Outputs are the pull side. Exports are the write side of a format loader.
+    </p>
+  </Section>
+
+  <Section index="02" title="The call chain" note="load → row → tick → pull">
+    <DocTable
+      columns={['Stage', 'Call', 'What runs']}
+      rows={[
+        ['Load', 'core.loadModule(bytes)', 'Depack PP20/ICE, probe every FormatPlugin.test() in order, call the first match’s load(), then finalize (sequence scan, envelope clamps, instrument keys).'],
+        ['Start', 'core.startPlayer()', 'State LOADED → PLAYING. The DSP’s reset() runs on start.'],
+        ['Row', 'per channel', 'format.readEvent(core, chn, row), then every EffectPlugin.onRow, then every DspPlugin.onRow.'],
+        ['Tick', 'per channel', 'Every EffectPlugin.onTick; after processTick, every EffectPlugin.onTickPost.'],
+        ['Render', 'per tick', 'DspPlugin.renderFrame(core, out, ticks) fills ticks × ticksize × 2 interleaved floats.'],
+        ['Pull', 'core.playBuffer(out, size, loop)', 'Whole ticks are copied into the caller’s buffer. The output decides when to call.'],
+      ]}
+    />
+    <p class="mt-3 max-w-[74ch] text-[0.86rem] leading-relaxed text-base-content/55">
+      The format reader is re-entered through the registry on every row: <span class="font-mono text-[0.8rem]">core.registries.format(mod.format).readEvent(...)</span>.
+      That is why <span class="font-mono text-[0.8rem]">ModuleData.format</span> must equal the plugin’s
+      <span class="font-mono text-[0.8rem]">name</span>.
+    </p>
+  </Section>
+
+  <Section index="03" title="The clock" note="one formula for every format">
+    <p class="max-w-[72ch] text-[0.9rem] leading-relaxed text-base-content/60">
+      One tick is <span class="font-mono text-[0.82rem]">ticksize</span> samples. The core recomputes it every tick,
+      so a tempo change takes effect on the current row. The formula is libxmp’s, with truncation, not rounding:
+    </p>
+    <CodeBlock
+      title="ticksize"
+      lang="formula"
+      code={`ticksize = (int)(sampleRate × time_factor × rrate / bpm / 1000)
+
+defaults: time_factor = 10, rrate = 250
+        = (int)(sampleRate × 2.5 / bpm)
+
+44,100 Hz, 125 BPM → 882 samples = 20 ms
+a row lasts speed ticks (speed 6 = 120 ms)`}
+    />
+    <p class="mt-3 max-w-[72ch] text-[0.86rem] leading-relaxed text-base-content/55">
+      A DSP never computes time from wall clocks. <span class="font-mono text-[0.8rem]">renderFrame</span> is given
+      <span class="font-mono text-[0.8rem]">ticks</span> and reads <span class="font-mono text-[0.8rem]">core.ticksize</span>
+      for the current value.
+    </p>
+  </Section>
+
+  <Section index="04" title="Registration rules" note="names are keys">
+    <ul class="max-w-[74ch] space-y-2 text-[0.88rem] leading-relaxed text-base-content/60">
+      <li>
+        Names are unique per kind. Registering the same name twice throws
+        <span class="font-mono text-[0.8rem]">PluginNotFoundError</span>.
+      </li>
+      <li>
+        Format probing stops at the first <span class="font-mono text-[0.8rem]">test()</span> that returns true.
+        Register the narrow/signature formats before broad ones, or accept that order decides.
+      </li>
+      <li>
+        <span class="font-mono text-[0.8rem]">test()</span> must be cheap and must not throw on short input.
+      </li>
+      <li>
+        <span class="font-mono text-[0.8rem]">core.setDsp(name)</span> only works while the player is stopped;
+        it throws <span class="font-mono text-[0.8rem]">StateError</span> while playing.
+      </li>
+      <li>
+        The core does not start an output. The host app creates/pulls it; the studio and the demo do this in their
+        own click handler.
+      </li>
+    </ul>
+  </Section>
+
+  <Section index="05" title="Errors" note="one family">
+    <p class="max-w-[72ch] text-[0.9rem] leading-relaxed text-base-content/60">
+      Every error extends <span class="font-mono text-[0.8rem]">ModplayError</span>, so one catch block handles the family:
+    </p>
+    <CodeBlock
+      title="Error classes"
+      code={`ModplayError            base
+UnknownFormatError      no registered plugin accepted the bytes
+ParseError              a loader found a bad header / truncated data
+PackedModuleError       packed wrapper with no depacker
+StateError              wrong lifecycle order (start before load, setDsp while playing)
+PluginNotFoundError     unknown name, duplicate registration
+SampleError             unknown sample id, empty or oversized swap`}
+    />
+  </Section>
+
+  <Section index="06" title="Read next" note="five contracts">
+    <div class="grid gap-px border border-base-300 bg-base-300 sm:grid-cols-2">
+      {
+        pluginDocs.slice(1).map((doc) => (
+          <a href={`/api/plugins/${doc.slug}`} class="group bg-base-100 p-4 hover:bg-base-200/60">
+            <p class="font-mono text-[0.6rem] uppercase tracking-[0.14em] text-base-content/30">{doc.order}</p>
+            <h3 class="mt-1 text-[0.95rem] font-semibold group-hover:text-primary">{doc.title}</h3>
+            <p class="mt-1 text-[0.8rem] leading-relaxed text-base-content/50">{doc.blurb}</p>
+          </a>
+        ))
+      }
+    </div>
+    <DocNote>
+      The contracts below are the same ones the shipped loaders, mixers and outputs implement. Nothing on these
+      pages is an example-only interface.
+    </DocNote>
+  </Section>
+
+  <nav class="mt-16 flex items-center justify-between gap-4 border-t border-base-300 pt-5">
+    <a href="/api" class="font-mono text-[0.66rem] uppercase tracking-[0.14em] text-base-content/35 hover:text-primary">
+      ← Library API
+    </a>
+    <a
+      href={`/api/plugins/${next.slug}`}
+      class="text-right font-mono text-[0.66rem] uppercase tracking-[0.14em] text-base-content/50 hover:text-primary"
+    >
+      {next.order} · {next.title} →
+    </a>
+  </nav>
+</Base>

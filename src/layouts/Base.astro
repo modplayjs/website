@@ -67,7 +67,7 @@ const structuredData = site && !noindex
 ---
 
 <!doctype html>
-<html lang="en" data-theme="modplay">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -76,7 +76,7 @@ const structuredData = site && !noindex
     {canonical && <link rel="canonical" href={canonical} />}
     {noindex && <meta name="robots" content="noindex" />}
     <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#0b0a12" />
+    <meta name="theme-color" content="#0b0b12" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     {site && <link rel="sitemap" href="/sitemap-index.xml" />}
 
@@ -107,7 +107,7 @@ const structuredData = site && !noindex
       )
     }
   </head>
-  <body class="min-h-screen bg-base-100 font-sans text-base-content antialiased">
+  <body class="min-h-screen bg-base-300 font-sans text-base-content antialiased">
     <a
       href="#main"
       class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:bg-base-200 focus:px-4 focus:py-2 focus:font-mono focus:text-sm"

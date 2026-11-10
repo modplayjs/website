@@ -18,8 +18,10 @@ const total = categories.reduce((n, category) => n + category.packages.length, 0
     <h1 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Library API</h1>
     <p class="mt-4 max-w-[66ch] text-[0.98rem] leading-relaxed text-base-content/65">
       {total} packages at version {libraryVersion}. The core owns timing and state; every other package
-      is a plugin with one of three contracts — a format loader, a mixer, or an output. Nothing here
-      is a framework: you register the parts you need and call them.
+      is a plugin with one of five contracts — a format loader, an effect, a mixer, an output or an
+      exporter. Nothing here is a framework: you register the parts you need and call them. The
+      contracts themselves are documented under
+      <a href="/api/plugins" class="text-primary hover:underline">Plugin authoring</a>.
     </p>
   </header>
 
@@ -74,25 +76,28 @@ const total = categories.reduce((n, category) => n + category.packages.length, 0
     </div>
   </Section>
 
-  <Section index="03" title="Three contracts" note="register, then call">
-    <div class="grid gap-px border border-base-300 bg-base-300 lg:grid-cols-3">
+  <Section index="03" title="Five contracts" note="register, then call">
+    <div class="grid gap-px border border-base-300 bg-base-300 sm:grid-cols-2 lg:grid-cols-5">
       {
         [
-          ['Format', 'test · load · readEvent', 'Parses a file into ModuleData and reads one row at a time during playback.'],
-          ['DSP', 'renderFrame · onRow · reset', 'Turns channel state into interleaved stereo floats for one tick.'],
-          ['Output', 'start · stop', 'Pulls from the core whenever its sink can take samples.'],
-        ].map(([name, methods, text]) => (
-          <div class="bg-base-100 p-4">
-            <h3 class="font-mono text-[0.72rem] uppercase tracking-[0.16em] text-base-content">{name}</h3>
-            <p class="mt-2 font-mono text-[0.66rem] text-primary/80">{methods}</p>
+          ['Format', 'test · load · readEvent', 'Parses a file into ModuleData and reads one row at a time.', '/api/plugins/format'],
+          ['Effect', 'onRow · onTick · onTickPost', 'Sees every channel after the format reader; meters, MIDI, processing.', '/api/plugins/effect'],
+          ['DSP', 'renderFrame · reset', 'Turns channel state into interleaved stereo floats for one tick.', '/api/plugins/dsp'],
+          ['Output', 'start · stop', 'Pulls from the core whenever its sink can take samples.', '/api/plugins/output'],
+          ['Export', 'supports · write', 'Serializes a ModuleData back into a format’s file bytes.', '/api/plugins/export'],
+        ].map(([name, methods, text, href]) => (
+          <a href={href} class="group bg-base-100 p-4 hover:bg-base-200/60">
+            <h3 class="font-mono text-[0.72rem] uppercase tracking-[0.16em] text-base-content group-hover:text-primary">{name}</h3>
+            <p class="mt-2 font-mono text-[0.64rem] text-primary/80">{methods}</p>
             <p class="mt-2 text-[0.8rem] leading-relaxed text-base-content/50">{text}</p>
-          </div>
+          </a>
         ))
       }
     </div>
     <p class="mt-4 max-w-[72ch] font-mono text-[0.68rem] leading-relaxed text-base-content/35">
-      The full interfaces, including what a loader must fill in and what the core guarantees a DSP,
-      are on the category pages. They are the same contracts the shipped loaders and mixers implement.
+      The exact interfaces, lifecycle, time model and complete minimal plugins are in
+      <a href="/api/plugins" class="text-primary hover:underline">Plugin authoring</a>. They are the same contracts the
+      shipped loaders, mixers and outputs implement.
     </p>
   </Section>
 </Base>
