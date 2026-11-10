@@ -5,6 +5,7 @@ import CodeBlock from '../../../components/CodeBlock.astro';
 import DocTable from '../../../components/DocTable.astro';
 import DocNote from '../../../components/DocNote.astro';
 import { pluginDocs } from '../../../data/site';
+import captureSource from '../../../examples/output-capture.ts?raw';
 
 const index = pluginDocs.findIndex((doc) => doc.slug === 'output');
 const prev = pluginDocs[index - 1]!;
@@ -120,38 +121,7 @@ output.start(core);   // after core.startPlayer()`}
       An offline writer can drain the module synchronously. This keeps the partial tail that
       <span class="font-mono text-[0.8rem]">0</span> reports and stops on <span class="font-mono text-[0.8rem]">-1</span>.
     </p>
-    <CodeBlock
-      title="capture.ts"
-      code={`import type { Core, OutputPlugin } from '@modplayjs/core';
-
-export function createCaptureOutput() {
-  const chunks: Float32Array[] = [];
-  const output: OutputPlugin & { pcm(): Float32Array } = {
-    name: 'capture',
-    start(core) {
-      const scratch = new Float32Array(core.ticksize * 2 * 4);
-      for (;;) {
-        const n = core.playBuffer(scratch, scratch.length, 1);
-        if (n < 0) break;                 // already ended, nothing written
-        if (n === 0) {                    // ended during this buffer
-          chunks.push(scratch.slice());   // valid audio + zero tail
-          break;
-        }
-        chunks.push(scratch.slice(0, n));
-      }
-    },
-    stop() {},
-    pcm() {
-      const total = chunks.reduce((n, c) => n + c.length, 0);
-      const out = new Float32Array(total);
-      let o = 0;
-      for (const c of chunks) { out.set(c, o); o += c.length; }
-      return out;
-    },
-  };
-  return output;
-}`}
-    />
+    <CodeBlock title="capture.ts" lang="TypeScript" code={captureSource} />
     <p class="mt-3 max-w-[74ch] text-[0.86rem] leading-relaxed text-base-content/55">
       <span class="font-mono text-[0.8rem]">@modplayjs/out-pcm</span> is the fuller version: tick-accurate offline
       render plus a 16-bit stereo RIFF/WAVE encoder.

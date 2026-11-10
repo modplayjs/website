@@ -8,7 +8,9 @@
     "build": "astro build",
     "preview": "astro preview",
     "preview:worker": "wrangler dev",
-    "deploy": "node scripts/deploy.mjs"
+    "deploy": "node scripts/deploy.mjs",
+    "typecheck": "tsc -p tsconfig.examples.json",
+    "typecheck:examples": "tsc -p tsconfig.examples.json"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",

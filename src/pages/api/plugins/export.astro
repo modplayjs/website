@@ -5,6 +5,7 @@ import CodeBlock from '../../../components/CodeBlock.astro';
 import DocTable from '../../../components/DocTable.astro';
 import DocNote from '../../../components/DocNote.astro';
 import { pluginDocs } from '../../../data/site';
+import exportSource from '../../../examples/export-json.ts?raw';
 
 const index = pluginDocs.findIndex((doc) => doc.slug === 'export');
 const prev = pluginDocs[index - 1]!;
@@ -98,29 +99,7 @@ if (writer.supports(core.module!)) {
       A debug writer is the shortest useful export: it round-trips the normalized module through JSON so you can diff a
       loader against the reference. It is also a template for the real thing — same contract, different byte layout.
     </p>
-    <CodeBlock
-      title="json-export.ts"
-      code={`import type { ExportPlugin, ModuleData } from '@modplayjs/core';
-
-export const jsonExport: ExportPlugin = {
-  name: 'json',
-  label: 'Normalized module (JSON)',
-  extension: 'json',
-
-  supports() {
-    return true;
-  },
-
-  write(mod: ModuleData) {
-    const text = JSON.stringify(
-      mod,
-      (_key, value) => (value instanceof Uint8Array ? Array.from(value) : value),
-      2,
-    );
-    return new TextEncoder().encode(text);
-  },
-};`}
-    />
+    <CodeBlock title="json-export.ts" lang="TypeScript" code={exportSource} />
     <DocNote>
       The core uses <span class="font-mono text-[0.8rem]">mod.format</span> to re-enter the reader on every row. A writer
       that changes the format name must also register a matching reader, or the produced file cannot be loaded back.
