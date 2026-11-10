@@ -29,6 +29,9 @@
   --pat-active-text: oklch(0.97 0.01 275);
   --pat-accent: oklch(0.75 0.12 255);
   --pat-rownum: oklch(0.85 0.12 85);
+
+  /* The playground's pattern accent, used for page-level accents. */
+  --site-accent: var(--pat-accent);
 }
 
 /* The only custom drawing on the site: the faint rule pattern of a tracker
