@@ -72,6 +72,7 @@ Everything below is emitted from `SITE_URL`, which defaults to
 | Open Graph and Twitter tags | `Base.astro`, image is `public/og.png` |
 | JSON-LD | `WebSite` + `SoftwareSourceCode` on every page |
 | `sitemap-index.xml`, `sitemap-0.xml` | `@astrojs/sitemap` |
+| `sitemap.xml` | copy of the index at the conventional path (`sitemap-alias` in `astro.config.mjs`) |
 | `robots.txt` | generated from the same origin, so the sitemap URL cannot drift |
 | `404` | `noindex`, no canonical, served by Workers with a 404 status |
 

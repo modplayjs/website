@@ -1,7 +1,28 @@
 // SPDX-License-Identifier: BSD-3-Clause
+import { copyFile } from 'node:fs/promises';
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
+
+// @astrojs/sitemap always writes `sitemap-index.xml` (plus its chunks), but
+// crawlers, Search Console and anyone typing the URL expect `/sitemap.xml`.
+// Keep the index as the single source and publish the same document at the
+// conventional path, so the two cannot drift.
+function sitemapAlias() {
+  return {
+    name: 'sitemap-alias',
+    hooks: {
+      'astro:build:done': async ({ dir, logger }) => {
+        try {
+          await copyFile(new URL('sitemap-index.xml', dir), new URL('sitemap.xml', dir));
+          logger.info('published /sitemap.xml');
+        } catch {
+          logger.warn('no sitemap-index.xml to publish at /sitemap.xml');
+        }
+      },
+    },
+  };
+}
 
 // Canonical links, Open Graph URLs and the sitemap are absolute, so the build
 // needs the origin the site is served from. The Worker is attached to
@@ -22,6 +43,7 @@ export default defineConfig({
   devToolbar: { enabled: false },
   integrations: [
     sitemap({ namespaces: { news: false, xhtml: false, image: false, video: false } }),
+    sitemapAlias(),
   ],
   vite: {
     plugins: [tailwindcss()],
