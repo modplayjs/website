@@ -1,5 +1,5 @@
 ---
-import { repository } from '../data/site';
+import { playground, repository } from '../data/site';
 
 interface Props {
   path: string;
@@ -22,14 +22,14 @@ const items = [
       modplay<span class="text-secondary">js</span>
     </a>
 
-    <nav class="hidden items-center gap-1 sm:flex" aria-label="Sections">
+    <nav class="hidden items-center gap-1 md:flex" aria-label="Sections">
       {
         items.map((item) => (
           <a
             href={item.href}
             aria-current={item.active ? 'page' : undefined}
             class:list={[
-              'px-3 py-2 font-mono text-[0.68rem] uppercase tracking-[0.12em] transition-colors',
+              'whitespace-nowrap px-3 py-2 font-mono text-[0.68rem] uppercase tracking-[0.12em] transition-colors',
               item.active
                 ? 'text-primary'
                 : 'text-base-content/45 hover:text-base-content',
@@ -40,13 +40,18 @@ const items = [
         ))
       }
       <a
+        href={playground}
+        class="whitespace-nowrap px-3 py-2 font-mono text-[0.68rem] uppercase tracking-[0.12em] text-base-content/45 transition-colors hover:text-base-content"
+        >Playground <span aria-hidden="true">↗</span></a
+      >
+      <a
         href={repository}
-        class="ml-2 flex items-center gap-1 border-l border-base-300 pl-4 font-mono text-[0.68rem] uppercase tracking-[0.12em] text-base-content/45 transition-colors hover:text-base-content"
+        class="ml-2 flex items-center gap-1 whitespace-nowrap border-l border-base-300 pl-4 font-mono text-[0.68rem] uppercase tracking-[0.12em] text-base-content/45 transition-colors hover:text-base-content"
         >Source <span aria-hidden="true">↗</span></a
       >
     </nav>
 
-    <div class="dropdown dropdown-end sm:hidden">
+    <div class="dropdown dropdown-end md:hidden">
       <div
         tabindex="0"
         role="button"
@@ -71,6 +76,9 @@ const items = [
             </li>
           ))
         }
+        <li>
+          <a href={playground}>Playground ↗</a>
+        </li>
         <li>
           <a href={repository}>Source ↗</a>
         </li>

@@ -7,6 +7,7 @@ export const androidVersion = '0.2.2';
 export const xrVersion = '0.1.1';
 export const license = 'BSD-3-Clause';
 export const repository = 'https://github.com/modplayjs/modplayjs';
+export const playground = 'https://playground.modplayjs.org';
 
 export interface Pkg {
   /** npm name */
